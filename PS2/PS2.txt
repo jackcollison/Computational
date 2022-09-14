@@ -1,0 +1,3 @@
+Run.jl file runs the code. You have to switch the models by calling different functions in that file.
+Model_complete.jl file contains value function iteration in Hugget (1993) economy with complete markets.
+Model_incomplete.jl file contains value function iteration in Hugget (1993) economy with incomplete markets.
