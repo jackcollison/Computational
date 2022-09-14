@@ -1,0 +1,3 @@
+These are non-parallelized Fortran and Julia files for Econ 899 PS1.
+A vectorized version of Julia code is in PS2.
+Strangely, there was a bug in Fortran that does not run the vectorized version.
