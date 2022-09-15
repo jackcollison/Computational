@@ -197,12 +197,12 @@ function UpdatePrice(res::Results, verbose::Bool = false, tol::Float64 = 1e-2)
     if ed > tol
         # Update price
         oldq = res.q
-        res.q += (1 - res.q) / 2
+        res.q += abs(ed) * (1 - res.q) / 2
 
         # Print convergence
         if verbose
             println("\n******************************************************************\n")
-            @printf "Excess Demand = %-8.6g Old Price = %-8.6d New Price = %.6d\n" ed oldq res.q
+            @printf "Excess Demand = %-8.6g Old Price = %-8.6d New Price = %.6d\n\n" ed oldq res.q
             println("******************************************************************\n")
         end
 
@@ -211,12 +211,12 @@ function UpdatePrice(res::Results, verbose::Bool = false, tol::Float64 = 1e-2)
     elseif ed < -tol
         # Update price
         oldq = res.q
-        res.q -= (1 - res.q) / 2
+        res.q -= abs(ed) * (1 - res.q) / 2
 
         # Print convergence
         if verbose
             println("\n******************************************************************\n")
-            @printf "Excess Demand = %-8.6g Old Price = %-8.6f New Price = %.6f\n" ed oldq res.q
+            @printf "Excess Demand = %-8.6g Old Price = %-8.6f New Price = %.6f\n\n" ed oldq res.q
             println("******************************************************************\n")
         end
 
@@ -226,7 +226,7 @@ function UpdatePrice(res::Results, verbose::Bool = false, tol::Float64 = 1e-2)
         # Print convergence
         if verbose
             println("\n******************************************************************\n")
-            @printf "Excess Demand = %.6f is within threshold!\n" ed
+            @printf "Excess Demand = %.6f is within threshold!\n\n" ed
             println("******************************************************************\n")
         end
 
