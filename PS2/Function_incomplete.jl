@@ -72,8 +72,8 @@ function get_g(prim::Primitives, res::Results; tol::Float64 = 1e-4, err::Float64
 end
 
 function get_mu(prim::Primitives, res::Results; tol::Float64 = 1e-4, err::Float64 = 100.0)
-    @unpack a_grid, length_a_grid, Π = prim
-    ED = 1 # excess demand
+    @unpack a_grid, length_a_grid, Π, β = prim
+    ED = 0.01 # excess demand
     mu_new = zeros(length_a_grid, 2)
         println("###############################################")
         println("######## SOLVING DISTRIBUTION PROBLEM #########")
@@ -90,15 +90,19 @@ function get_mu(prim::Primitives, res::Results; tol::Float64 = 1e-4, err::Float6
             err = maximum(abs.((mu_new .- res.mu)./res.mu))
             res.mu = mu_new
         end
+
         ED = sum(res.pol_func .* res.mu)
+
         if ED > tol
-            res.q += 0.01*res.q
+            q_old = res.q
+            res.q = res.q + 0.01 * (1 - q_old)/2
 
             println("\n******************************************************************\n")
             @printf "Excess Demand = %-8.6g New Price = %.6f\n\n" ED res.q
             println("******************************************************************\n")
         elseif ED < -tol
-            res.q -= 0.01*res.q
+            q_old = res.q
+            res.q = res.q - 0.01 * (1 - q_old)/2
 
             println("\n******************************************************************\n")
             @printf "Excess Demand = %-8.6g New Price = %.6f\n\n" ED res.q
