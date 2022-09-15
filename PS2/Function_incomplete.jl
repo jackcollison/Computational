@@ -74,7 +74,6 @@ function get_mu(prim::Primitives, res::Results; tol::Float64 = 1e-4, err::Float6
 
             for i = 1:length_a_grid, j = 1:2
                 a_new = a_grid[i] # a'
-                s_new = j # s'
                 mu_new[i,j] = sum(res.mu.*(res.pol_func .== a_new) * Π[j,:])
             end
             err = maximum((mu_new .- res.mu)./res.mu)
