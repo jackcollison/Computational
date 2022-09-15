@@ -24,7 +24,7 @@ function Initialize()
     val_func = reshape(zeros(2*prim.length_a_grid), prim.length_a_grid, 2) #initial value function guess
     pol_func = reshape(zeros(2*prim.length_a_grid), prim.length_a_grid, 2) #initial policy function guess
     q = 0.9932 #initial bond price to guess
-    mu = (prim.a_grid .- (prim.a_min) ./ (prim.a_max+prim.a_min)) * [0.9434 0.0566] # initial guess for mu
+    mu = ones(prim.length_a_grid) ./ prim.length_a_grid * [0.9434 0.0566] # initial guess for mu
     res = Results(val_func, pol_func, q, mu) #initialize results struct
     prim, res #return deliverables
 end
@@ -53,39 +53,61 @@ end
 function get_g(prim::Primitives, res::Results; tol::Float64 = 1e-4, err::Float64 = 100.0)
     n = 0 #counter
 
+        println("###############################################")
+        println("########## SOLVING HOUSEHOLD PROBLEM ##########")
+        println("###############################################\n")
+
     while err>tol #begin iteration
         v_next = Bellman(prim, res) #spit out new vectors
-        err = abs.(maximum(v_next.-res.val_func)) #reset error level
+        err = maximum(abs.(v_next.-res.val_func)) #reset error level
         res.val_func = v_next #update value function
         n+=1
+
+            @printf "HH Iteration = %-12d Error = %.5g\n" n err
     end
+        println("\n******************************************************************\n")
+        println("Household problem converged in ", n, " iterations!\n")
+        println("******************************************************************\n")
     #println("Value function converged in ", n, " iterations.")
 end
 
 function get_mu(prim::Primitives, res::Results; tol::Float64 = 1e-4, err::Float64 = 100.0)
     @unpack a_grid, length_a_grid, Π = prim
     ED = 1 # excess demand
+    mu_new = zeros(length_a_grid, 2)
+        println("###############################################")
+        println("######## SOLVING DISTRIBUTION PROBLEM #########")
+        println("###############################################\n")
 
     while abs(ED) > tol
-        mu_new = zeros(length_a_grid, 2)
-
+        err = 100.0
+        get_g(prim, res)
         while err>tol
-            get_g(prim, res)
-
             for i = 1:length_a_grid, j = 1:2
                 a_new = a_grid[i] # a'
                 mu_new[i,j] = sum(res.mu.*(res.pol_func .== a_new) * Π[j,:])
             end
-            err = maximum((mu_new .- res.mu)./res.mu)
+            err = maximum(abs.((mu_new .- res.mu)./res.mu))
             res.mu = mu_new
         end
         ED = sum(res.pol_func .* res.mu)
         if ED > tol
             res.q += 0.01*res.q
+
+            println("\n******************************************************************\n")
+            @printf "Excess Demand = %-8.6g New Price = %.6f\n\n" ED res.q
+            println("******************************************************************\n")
         elseif ED < -tol
             res.q -= 0.01*res.q
+
+            println("\n******************************************************************\n")
+            @printf "Excess Demand = %-8.6g New Price = %.6f\n\n" ED res.q
+            println("******************************************************************\n")
         end
     end
+            println("\n******************************************************************\n")
+            @printf "Excess Demand = %.6f is within threshold!\n\n" ED
+            println("******************************************************************\n")
 end
 
 #solve the model
