@@ -5,8 +5,8 @@ include("Function_incomplete.jl") #import the functions that solve our growth mo
 prim, res = Initialize() #initialize primitive and results structs
 @elapsed Solve_model(prim, res) #solve the model!
 
-JLD2.jldsave("/Users/Yeonggyu/Desktop/Huggett_rep.jld2", prim = prim, res = res) # save workspace in case
-
+JLD2.jldsave("/Users/Yeonggyu/Desktop/Econ 899 - Computation/PS/PS2/Huggett_rep.jld2", prim = prim, res = res) # save workspace in case
+#JLD2.@load "/Users/Yeonggyu/Desktop/Econ 899 - Computation/PS/PS2/Huggett_rep.jld2"
 @unpack val_func, pol_func, mu = res
 @unpack a_grid, length_a_grid, Es = prim
 
