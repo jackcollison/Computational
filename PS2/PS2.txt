@@ -1,3 +1,5 @@
 Run.jl file runs the code. You have to switch the models by calling different functions in that file.
 Model_complete.jl file contains value function iteration for a neoclassical growth model with aggregate TFP risk. (2 state Markov process)
 Model_incomplete.jl file contains value function iteration in Huggett (1993) economy with incomplete markets.
+
+With 1,000 asset grids, it takes about 8 minutes on Macbook Pro M1.
