@@ -14,21 +14,23 @@ include("Diagnostics.jl")
 results = Initialize()
 
 # Solve model
-SolveModel(results, true)
+@time SolveModel(results, true)
 
 # Policy and value function plot
 plot(A, results.value_func, labels = ["Employed" "Unemployed"])
 plot(A, [results.policy_func A], labels = ["Employed" "Unemployed" "45 degree"])
+plot(A, results.policy_func - [A A], labels = ["Employed" "Unemployed"])
 
 # Invariant distribution
 plot(A, results.μ, labels = ["Employed" "Unemployed"])
 
 # Wealth distribution
-W = WealthDistribution(results, -2)
-## TODO: Calculate and plot wealth distribution
+W = WealthDistribution(results)
+plot(A, W, labels = ["Employed" "Unemployed"])
 
 # Lorenz Curve and Gini index
-lorenz = LorenzCurve(results)
+lorenz = LorenzCurve(W)
+
 Gini(results)
 ## TODO: Calculate and plot Lorenz Curve and Gini index
 

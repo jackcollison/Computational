@@ -3,27 +3,23 @@
 ########################################################
 
 # Required packages
-using Plots, Prinf
+using Plots, Printf
 
 # Include model
 include("Model.jl")
 
 # Cross sectional wealth distribution functionality
-function WealthDistribution(res::Results, a::Float64)
-    # Unpack primitives
-    @unpack β, α, S, ns, Π, A, na = Primitives()
-    
-    # Get wealth distribution
-    W = S .+ res.pol_func .- a
-end
-
-# Gini index functionality
-function Gini(res::Results)
+function WealthDistribution(res::Results)
     return 0
 end
 
 # Lorenz Curve functionality
-function LorenzCurve(res::Results)
+function LorenzCurve(W::Array{Float64, 2})
+    return 0
+end
+
+# Gini index functionality
+function Gini(res::Results)
     return 0
 end
 

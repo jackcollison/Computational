@@ -13,7 +13,7 @@ using Parameters, LinearAlgebra, Interpolations, Optim, Printf
     S::Array{Float64, 1} = [1.0, 0.5]
     ns::Int64 = length(S)
     Π::Array{Float64, 2} = [0.97 0.03; 0.5 0.5]
-    A::Array{Float64, 1} = collect(range(-2.0, length = 100, stop = 5.0))
+    A::Array{Float64, 1} = collect(range(-2.0, length = 1000, stop = 5.0))
     na::Int64 = length(A)
 end
 
@@ -32,7 +32,7 @@ function Initialize()
     prim = Primitives()
     val_func = reshape(zeros(2 * prim.na), prim.na, 2) 
     pol_func = reshape(zeros(2 * prim.na), prim.na, 2)
-    μ = reshape(ones(2 * prim.na), prim.na, 2) / (prim.na * 2)
+    μ = ones(prim.na) ./ prim.na * [0.9434 0.0566]
     q = (1 + prim.β) / 2
 
     # Return structure
@@ -52,31 +52,17 @@ function HHBellman(res::Results)
     # Iterate over state space
     for (i_s, s) in enumerate(S)
         for (i_a, a) in enumerate(A)
-            # Budget constraint, consumption, candidate maximum
-            budget =  s + a
-            candidate_max = -Inf
+            # Consumption matrix
+            C = s + a .- (res.q .* A)
+            C = ifelse.(C .> 0, 1, 0) .* C
 
-            # Iterate over state space
-            for (i_ap, ap) in enumerate(A)
-                # Consumption
-                c = budget - ap * res.q
+            # Value matrix and maximand
+            V = (C.^(1 - α) .- 1) ./ (1 - α) + β * res.value_func * Π[i_s, :]
+            Vmax = findmax(V)
 
-                # Check for positivity
-                if c > 0
-                    # Calculate value function
-                    val = (c^(1 - α) - 1) / (1 - α) + β * Π[i_s, :]⋅res.value_func[i_ap, :]
-
-                    # Check candidate value
-                    if val > candidate_max
-                        # Set new maximizers
-                        res.policy_func[i_a, i_s] = ap
-                        candidate_max = val
-                    end
-                end
-            end
-
-            # Update value function
-            v_next[i_a, i_s] = candidate_max
+            # Update value and policy functions
+            v_next[i_a, i_s] = Vmax[1]
+            res.policy_func[i_a, i_s] = A[Vmax[2]]
         end
     end
 
@@ -202,7 +188,7 @@ function UpdatePrice(res::Results, verbose::Bool = false, tol::Float64 = 1e-2)
         # Print convergence
         if verbose
             println("\n******************************************************************\n")
-            @printf "Excess Demand = %-8.6g Old Price = %-8.6d New Price = %.6d\n\n" ed oldq res.q
+            @printf "Excess Demand = %-8.6g Old Price = %-8.6f New Price = %.6f\n\n" ed oldq res.q
             println("******************************************************************\n")
         end
 
@@ -211,7 +197,7 @@ function UpdatePrice(res::Results, verbose::Bool = false, tol::Float64 = 1e-2)
     elseif ed < -tol
         # Update price
         oldq = res.q
-        res.q -= abs(ed) * (1 - res.q) / 2
+        res.q -= abs(ed) * (res.q - β) / 2
 
         # Print convergence
         if verbose
@@ -258,13 +244,13 @@ function SolveModel(res::Results, verbose::Bool = false)
         i += 1
 
         # Solve household, distribution, and update prices
-        SolveHH(res, verbose)
-        Solveμ(res, verbose)
+        SolveHH(res) ## TODO: Add verbose back in 
+        Solveμ(res) ## TODO: Add verbose back in 
         converged = UpdatePrice(res, verbose)
 
         # Print statement
         if verbose
-            println("GE Iteration = ", i, "\n")
+            println("GE Iteration = ", i)
         end
     end
 
