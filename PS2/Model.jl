@@ -3,7 +3,7 @@
 ##################################################
 
 # Import required packages
-using Parameters, LinearAlgebra, Interpolations, Optim, Printf
+using Parameters, LinearAlgebra, Printf
 
 # Create primitives
 @with_kw struct Primitives
@@ -103,7 +103,7 @@ function SolveHH(res::Results, verbose::Bool = false, tol::Float64 = 1e-5)
     if verbose
         println("\n******************************************************************\n")
         println("Household problem converged in ", i, " iterations!\n")
-        println("******************************************************************\n")
+        println("********************************************************************\n")
     end
 end
 
@@ -165,7 +165,7 @@ function Solveμ(res::Results, verbose::Bool = false, tol::Float64 = 1e-5)
     if verbose
         println("\n******************************************************************\n")
         println("μ converged in ", i, " iterations!\n")
-        println("******************************************************************\n")
+        println("********************************************************************\n")
     end
 end
 
@@ -189,7 +189,7 @@ function UpdatePrice(res::Results, verbose::Bool = false, tol::Float64 = 1e-2)
         if verbose
             println("\n******************************************************************\n")
             @printf "Excess Demand = %-8.6g Old Price = %-8.6f New Price = %.6f\n\n" ed oldq res.q
-            println("******************************************************************\n")
+            println("********************************************************************\n")
         end
 
         # Return value
@@ -203,7 +203,7 @@ function UpdatePrice(res::Results, verbose::Bool = false, tol::Float64 = 1e-2)
         if verbose
             println("\n******************************************************************\n")
             @printf "Excess Demand = %-8.6g Old Price = %-8.6f New Price = %.6f\n\n" ed oldq res.q
-            println("******************************************************************\n")
+            println("********************************************************************\n")
         end
 
         # Return value
@@ -213,7 +213,7 @@ function UpdatePrice(res::Results, verbose::Bool = false, tol::Float64 = 1e-2)
         if verbose
             println("\n******************************************************************\n")
             @printf "Excess Demand = %.6f is within threshold!\n\n" ed
-            println("******************************************************************\n")
+            println("********************************************************************\n")
         end
 
         # Return within tolerance
@@ -256,6 +256,6 @@ function SolveModel(res::Results, verbose::Bool = false)
 
     # Print convergence
     println("***********************************************\n")
-    println("GE converged in ", i, " iterations!")
+    println("GE converged in ", i, " iterations!\n")
     println("***********************************************\n")
 end

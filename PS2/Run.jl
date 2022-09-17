@@ -26,20 +26,19 @@ plot(A, results.μ, labels = ["Employed" "Unemployed"])
 
 # Wealth distribution
 W = WealthDistribution(results)
-plot(A, W, labels = ["Employed" "Unemployed"])
+plot([W[1:na, 1] W[(na + 1):(2 * na), 1]], [W[1:na, 2] W[(na + 1):(2 * na), 2]], labels = ["Employed" "Unemployed"])
 
 # Lorenz Curve and Gini index
-lorenz = LorenzCurve(W)
-
-Gini(results)
-## TODO: Calculate and plot Lorenz Curve and Gini index
+Lorenz = LorenzCurve(W)
+plot([Lorenz[:,1] Lorenz[:,1]], [Lorenz[:,2] Lorenz[:,1]], labels = ["Lorenz Curve" "45 degree"])
+Gini(Lorenz)
 
 # λ plot and welfare analysis
-λ = λ(results)
-plot(A, λ, labels = ["Employed" "Unemployed"])
+l = λ(results)
+plot(A, l, labels = ["Employed" "Unemployed"])
 
 # Welfare comparison
-WelfareComparision(results, λ)
+WelfareComparision(results, l)
 
 # Proportion of population changing to complete markets
-PreferComplete(results, λ)
+PreferComplete(results, l)

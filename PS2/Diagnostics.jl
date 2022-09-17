@@ -3,29 +3,35 @@
 ########################################################
 
 # Required packages
-using Plots, Printf
+using Printf
 
 # Include model
 include("Model.jl")
 
-# Cross sectional wealth distribution functionality
+# Wealth distribution functionality
 function WealthDistribution(res::Results)
-    return 0
+    # Unpack primitives and generate distributions
+    @unpack β, α, S, ns, Π, A, na = Primitives()
+    vcat([A .+ S[1] res.μ[:, 1]], [A .+ S[2] res.μ[:, 2]])
 end
 
 # Lorenz Curve functionality
 function LorenzCurve(W::Array{Float64, 2})
-    return 0
+    # Calulate cumulative distributions
+    W = W[sortperm(W[:, 1]), :]
+    [cumsum(W[:, 2]) cumsum(W[:, 1] .* W[:, 2] ./ sum(W[:, 1] .* W[:, 2]))]
 end
 
 # Gini index functionality
-function Gini(res::Results)
-    return 0
+function Gini(L::Array{Float64, 2})
+    sum((L[:, 1] .- L[:, 2]) .* (L[:, 1] .- [0.0 ; L[1:(size(L, 1) - 1), 1]])) * 2
 end
 
 # First best welfare calculation
 function FBWelfare(res::Results)
-    return 0
+    # Unpack primitives and compute welfare
+    @unpack β, α, S, ns, Π, A, na = Primitives()
+    ((([0.9434 0.0566]⋅S)^(1 - α) - 1) / (1 - α)) / (1 - β)
 end
 
 # First best welfare and λ functionality
@@ -34,8 +40,8 @@ function λ(res::Results)
     @unpack β, α, S, ns, Π, A, na = Primitives()
     WFB = FBWelfare(res)
 
-    # Return lambda
-    ((WFB + 1 / ((1 - α) * (1 - β))) / (res.value_func .+ 1 / ((1 - α) * (1 - β)))).^(1 / (1 - α)) .- 1
+    # Return λ
+    ((WFB + 1 / ((1 - α) * (1 - β))) ./ (res.value_func .+ 1 / ((1 - α) * (1 - β)))).^(1 / (1 - α)) .- 1
 end
 
 # Welfare comparison
@@ -46,18 +52,18 @@ function WelfareComparision(res::Results, λ::Array{Float64, 2})
     WG = sum([λ[:,s]⋅res.μ[:,s] for s in 1:ns])
 
     # Formatting
-    println("\n******************************************************************\n")
+    println("\n***************************************************\n")
     @printf "Wᶠᵇ = %-8.6g Wⁱⁿᶜ = %-8.6f WG= %.6f\n\n" WFB WINC WG
-    println("******************************************************************\n")
+    println("*****************************************************\n")
 end
 
 # Proportion of those who prefer complete markets
 function PreferComplete(res::Results, λ::Array{Float64, 2})
     # Calculate and return
-    pc = sum([λ[:,s]⋅res.μ[:,s] for s in 1:ns])
+    pc = sum([(λ[:,s] .> 0)⋅res.μ[:,s] for s in 1:ns])
 
     # Formatting
-    println("\n******************************************************************\n")
+    println("*****************************************************\n")
     @printf "P(Complete) = %-8.6g\n\n" pc
-    println("******************************************************************\n")
+    println("*****************************************************\n")
 end
