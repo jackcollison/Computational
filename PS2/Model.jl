@@ -120,11 +120,8 @@ function μUpdate(res::Results)
     # Iterate over state space
     for i_s in 1:ns
         for (i_a, a) in enumerate(A)
-            # Get policy function index
-            Idx = map((ap) -> ap == a, res.policy_func)
-
             # Increment update
-            μ_next[i_a, i_s] += sum((Idx .* res.μ) * Π[:, i_s])
+            μ_next[i_a, i_s] += sum((ifelse.(res.policy_func .== a, 1, 0) .* res.μ) * Π[:, i_s])
         end
     end
 
