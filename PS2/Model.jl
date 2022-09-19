@@ -254,7 +254,7 @@ function SolveModel(res::Results, verbose::Bool = false)
     end
 
     # Print convergence
-    println("\n******************************************************************\n")
+    println("******************************************************************\n")
     println("GE converged in ", i, " iterations!\n")
     println("******************************************************************\n")
 end
