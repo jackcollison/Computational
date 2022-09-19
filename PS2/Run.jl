@@ -3,15 +3,19 @@
 ##################################################
 
 # Required packages
-using Plots
+using Distributed
+@everywhere using Plots
+
+# Set cores
+addprocs(4)
 
 # Include model
-include("Model.jl")
-include("Diagnostics.jl")
+@everywhere include("Model.jl")
+@everywhere include("Diagnostics.jl")
 
 # Get primitives and results
-@unpack β, α, S, ns, Π, A, na = Primitives()
-results = Initialize()
+@everywhere @unpack β, α, S, ns, Π, A, na = Primitives()
+@everywhere results = Initialize()
 
 # Solve model
 @time SolveModel(results, true)

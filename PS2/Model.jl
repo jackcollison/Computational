@@ -3,10 +3,11 @@
 ##################################################
 
 # Import required packages
-using Parameters, LinearAlgebra, Printf
+using Distributed
+@everywhere using Parameters, LinearAlgebra, Printf, SharedArrays
 
 # Create primitives
-@with_kw struct Primitives
+@everywhere @with_kw struct Primitives
     # Define global constants
     β::Float64 = 0.9932
     α::Float64 = 1.5
@@ -18,21 +19,21 @@ using Parameters, LinearAlgebra, Printf
 end
 
 # Structure for results
-mutable struct Results
+@everywhere mutable struct Results
     # Value and policy functions
-    value_func::Array{Float64,2}
-    policy_func::Array{Float64,2}
-    μ::Array{Float64, 2}
+    value_func::SharedArray{Float64,2}
+    policy_func::SharedArray{Float64,2}
+    μ::SharedArray{Float64, 2}
     q::Float64
 end
 
 # Initialization function
-function Initialize()
+@everywhere function Initialize()
     # Initialize results
     prim = Primitives()
-    val_func = reshape(zeros(2 * prim.na), prim.na, 2) 
-    pol_func = reshape(zeros(2 * prim.na), prim.na, 2)
-    μ = ones(prim.na) ./ prim.na * [0.9434 0.0566]
+    val_func = SharedArray{Float64}(reshape(zeros(2 * prim.na), prim.na, 2))
+    pol_func = SharedArray{Float64}(reshape(zeros(2 * prim.na), prim.na, 2))
+    μ = SharedArray{Float64}(ones(prim.na) ./ prim.na * [0.9434 0.0566])
     q = (1 + prim.β) / 2
 
     # Return structure
@@ -44,26 +45,24 @@ end
 #####################################################
 
 #Bellman operator for household
-function HHBellman(res::Results)
+@everywhere function HHBellman(res::Results)
     # Upack primitive structure, instantiate value function
     @unpack β, α, S, ns, Π, A, na = Primitives()
-    v_next = zeros(na, ns)
+    v_next = SharedArray{Float64}(zeros(na, ns))
 
     # Iterate over state space
-    for (i_s, s) in enumerate(S)
-        for (i_a, a) in enumerate(A)
-            # Consumption matrix
-            C = s + a .- (res.q .* A)
-            C = ifelse.(C .> 0, 1, 0) .* C
+    @sync @distributed for ((i_s, s), (i_a, a)) in collect(Iterators.product(enumerate(S), enumerate(A)))
+        # Consumption matrix
+        C = s + a .- (res.q .* A)
+        C = ifelse.(C .> 0, 1, 0) .* C
 
-            # Value matrix and maximand
-            V = (C.^(1 - α) .- 1) ./ (1 - α) + β * res.value_func * Π[i_s, :]
-            Vmax = findmax(V)
+        # Value matrix and maximand
+        V = (C.^(1 - α) .- 1) ./ (1 - α) + β * res.value_func * Π[i_s, :]
+        Vmax = findmax(V)
 
-            # Update value and policy functions
-            v_next[i_a, i_s] = Vmax[1]
-            res.policy_func[i_a, i_s] = A[Vmax[2]]
-        end
+        # Update value and policy functions
+        v_next[i_a, i_s] = Vmax[1]
+        res.policy_func[i_a, i_s] = A[Vmax[2]]
     end
 
     # Return value
@@ -71,7 +70,7 @@ function HHBellman(res::Results)
 end
 
 # Functionality to solve household problem
-function SolveHH(res::Results, verbose::Bool = false, tol::Float64 = 1e-5)
+@everywhere function SolveHH(res::Results, verbose::Bool = false, tol::Float64 = 1e-5)
     # Unpack primitives, initialize error, counter
     @unpack β, α, S, ns, Π, A, na = Primitives()
     err = Inf
@@ -113,17 +112,15 @@ end
 ########################################################
 
 # Update operator for distribution
-function μUpdate(res::Results)
+@everywhere function μUpdate(res::Results)
     # Upack primitive structure, instantiate value function
     @unpack β, α, S, ns, Π, A, na = Primitives()
-    μ_next = zeros(na, ns)
+    μ_next = SharedArray{Float64}(zeros(na, ns))
 
     # Iterate over state space
-    for i_s in 1:ns
-        for (i_a, a) in enumerate(A)
-            # Increment update
-            μ_next[i_a, i_s] += sum((ifelse.(res.policy_func .== a, 1, 0) .* res.μ) * Π[:, i_s])
-        end
+    @sync @distributed for (i_s, (i_a, a)) in collect(Iterators.product(1:ns, enumerate(A)))
+        # Increment update
+        μ_next[i_a, i_s] += sum((ifelse.(res.policy_func .== a, 1, 0) .* res.μ) * Π[:, i_s])
     end
 
     # Return μ
@@ -131,7 +128,7 @@ function μUpdate(res::Results)
 end
 
 # Functionality to solve stationary distribution problem
-function Solveμ(res::Results, verbose::Bool = false, tol::Float64 = 1e-5)
+@everywhere function Solveμ(res::Results, verbose::Bool = false, tol::Float64 = 1e-5)
     # Unpack primitives, initialize error, counter
     @unpack β, α, S, ns, Π, A, na = Primitives()
     err = Inf
@@ -173,10 +170,17 @@ end
 ##############################################################
 
 # Update price based on market clearing
-function UpdatePrice(res::Results, verbose::Bool = false, tol::Float64 = 1e-3)
+@everywhere function UpdatePrice(res::Results, verbose::Bool = false, tol::Float64 = 1e-3)
     # Upack primitive structure, instantiate value function
     @unpack β, α, S, ns, Π, A, na = Primitives()
     ed = sum(res.μ .* res.policy_func)
+
+    # Print statement
+    if verbose
+        println("###############################################")
+        println("############### UPDATING PRICES ###############")
+        println("###############################################\n")
+    end
 
     # Check positive excess demand
     if ed > tol
@@ -186,7 +190,7 @@ function UpdatePrice(res::Results, verbose::Bool = false, tol::Float64 = 1e-3)
 
         # Print convergence
         if verbose
-            println("\n********************************************************************\n")
+            println("********************************************************************\n")
             @printf "Excess Demand = %-8.6g Old Price = %-8.6f New Price = %.6f\n\n" ed oldq res.q
             println("********************************************************************\n")
         end
@@ -200,7 +204,7 @@ function UpdatePrice(res::Results, verbose::Bool = false, tol::Float64 = 1e-3)
 
         # Print convergence
         if verbose
-            println("\n********************************************************************\n")
+            println("********************************************************************\n")
             @printf "Excess Demand = %-8.6g Old Price = %-8.6f New Price = %.6f\n\n" ed oldq res.q
             println("********************************************************************\n")
         end
@@ -210,7 +214,7 @@ function UpdatePrice(res::Results, verbose::Bool = false, tol::Float64 = 1e-3)
     else
         # Print convergence
         if verbose
-            println("\n********************************************************************\n")
+            println("********************************************************************\n")
             @printf "Excess Demand = %.6f is within threshold!\n\n" ed
             println("********************************************************************\n")
         end
@@ -225,7 +229,7 @@ end
 ##############################################################
 
 # Functionality to run entire model
-function SolveModel(res::Results, verbose::Bool = false)
+@everywhere function SolveModel(res::Results, verbose::Bool = false)
     # Initialize convergence
     converged = false
     i = 0
