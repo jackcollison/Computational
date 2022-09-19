@@ -244,8 +244,8 @@ function SolveModel(res::Results, verbose::Bool = false)
         i += 1
 
         # Solve household, distribution, and update prices
-        SolveHH(res) ## TODO: Add verbose back in 
-        Solveμ(res) ## TODO: Add verbose back in 
+        SolveHH(res, verbose)
+        Solveμ(res, verbose)
         converged = UpdatePrice(res, verbose)
 
         # Print statement
