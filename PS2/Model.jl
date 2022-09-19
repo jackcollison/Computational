@@ -72,7 +72,8 @@ end
 
 # Functionality to solve household problem
 function SolveHH(res::Results, verbose::Bool = false, tol::Float64 = 1e-5)
-    # Initialize error, counter
+    # Unpack primitives, initialize error, counter
+    @unpack β, α, S, ns, Π, A, na = Primitives()
     err = Inf
     i = 0
 
@@ -90,7 +91,7 @@ function SolveHH(res::Results, verbose::Bool = false, tol::Float64 = 1e-5)
 
         # Call Bellman operator and update
         v_next = HHBellman(res)
-        err = abs.(maximum(v_next .- res.value_func)) / abs(maximum(v_next))
+        err = maximum([abs.(maximum(v_next[:,i] .- res.value_func[:,i])) / abs(maximum(v_next[:,i])) for i in 1:ns])
         res.value_func = v_next
 
         # Print progress
@@ -131,7 +132,8 @@ end
 
 # Functionality to solve stationary distribution problem
 function Solveμ(res::Results, verbose::Bool = false, tol::Float64 = 1e-5)
-    # Initialize error, counter
+    # Unpack primitives, initialize error, counter
+    @unpack β, α, S, ns, Π, A, na = Primitives()
     err = Inf
     i = 0
 
@@ -149,7 +151,7 @@ function Solveμ(res::Results, verbose::Bool = false, tol::Float64 = 1e-5)
 
         # Call update operator
         μ_next = μUpdate(res)
-        err = abs.(maximum(μ_next .- res.μ)) / abs(maximum(μ_next))
+        err = maximum([abs.(maximum(μ_next[:,i] .- res.μ[:,i])) / abs(maximum(μ_next[:,i])) for i in 1:ns])
         res.μ = μ_next
 
         # Print progress
@@ -171,7 +173,7 @@ end
 ##############################################################
 
 # Update price based on market clearing
-function UpdatePrice(res::Results, verbose::Bool = false, tol::Float64 = 1e-2)
+function UpdatePrice(res::Results, verbose::Bool = false, tol::Float64 = 1e-3)
     # Upack primitive structure, instantiate value function
     @unpack β, α, S, ns, Π, A, na = Primitives()
     ed = sum(res.μ .* res.policy_func)
