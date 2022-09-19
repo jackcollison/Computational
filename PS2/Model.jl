@@ -249,7 +249,7 @@ function SolveModel(res::Results, verbose::Bool = false)
 
         # Print statement
         if verbose
-            println("GE Iteration = ", i)
+            println("GE Iteration = ", i, "\n")
         end
     end
 
