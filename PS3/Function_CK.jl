@@ -195,7 +195,7 @@ function get_psi(prim::Primitives, res::Results; tol::Float64 = 1e-4, err::Float
 
         L_old = res.L
         L_new = 0.99 * L_old + 0.01 * sum(((res.psi_wor[:,:,1].*res.lab_func_wor[:,:,1]) .* Zs[1] + (res.psi_wor[:,:,2].*res.lab_func_wor[:,:,2]) .* Zs[2]) .* repeat(ef, 1, length_a_grid)')
-        errL = abs(L_new - L_old)/L-old
+        errL = abs(L_new - L_old)/L_old
         res.L = L_new
 
         res.r = α * res.K^(α-1) * res.L^(1-α) - δ
