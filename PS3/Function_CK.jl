@@ -11,12 +11,12 @@
     α::Float64 = 0.36 #capital share of income
     δ::Float64 = 0.06 #depreciation rate
     a_min::Float64 = 0 #asset lower bound
-    a_max::Float64 = 10 #asset upper bound
+    a_max::Float64 = 5 #asset upper bound
     length_a_grid::Int64 = 500 #number of asset grid points
-    b::Float64 = 0.2 #social security benefit
     a_grid::Array{Float64,1} = collect(range(a_min, length = length_a_grid, stop = a_max)) #asset grid
     Π::Matrix{Float64} = [0.9261 0.0739; 0.0189 0.9811] #transition matrix
     ef::Matrix{Float64} = DelimitedFiles.readdlm("/Users/Yeonggyu/Desktop/Econ 899 - Computation/PS/PS3/ef.txt", '\n')
+    mu::Array{Float64} = cumprod([1; ones(N-1)./(1+n)])./sum(cumprod([1; ones(N-1)./(1+n)]))
 end
 
 #structure that holds model results
@@ -26,11 +26,13 @@ mutable struct Results
     val_func_wor::Array{Float64, 3} #value function workers
     pol_func_wor::Array{Float64, 3} #policy function workers - saving
     lab_func_wor::Array{Float64, 3} #labor supply function workers
-    mu::Array{Float64, 3}
     r::Float64  #interest rate
     w::Float64  #wage
     L::Float64  #aggregate labor
     K::Float64  #aggregate capital
+    b::Float64  #social security benefit
+    psi_ret::Matrix{Float64}
+    psi_wor::Array{Float64, 3}
 end
 
 #function for initializing model primitives and results
@@ -41,20 +43,22 @@ function Initialize()
     val_func_wor = zeros(prim.length_a_grid, prim.Jr-1, 2)
     pol_func_wor = zeros(prim.length_a_grid, prim.Jr-1, 2)
     lab_func_wor = zeros(prim.length_a_grid, prim.Jr-1, 2)
-    mu = cat(reshape(cumprod([1; ones(65)./(1+prim.n)])./sum(cumprod([1; ones(65)./(1+prim.n)])), prim.N, 1) * reshape(ones(prim.length_a_grid)./prim.length_a_grid, 1, prim.length_a_grid) .* 0.2037,
-            reshape(cumprod([1; ones(65)./(1+prim.n)])./sum(cumprod([1; ones(65)./(1+prim.n)])), prim.N, 1) * reshape(ones(prim.length_a_grid)./prim.length_a_grid, 1, prim.length_a_grid) .* 0.7963, dims=3)
+    psi_ret = ones(prim.length_a_grid, prim.N-prim.Jr+1) ./ prim.length_a_grid
+    psi_wor = cat(reshape(ones(prim.length_a_grid), prim.length_a_grid, 1) * reshape(ones(prim.Jr-1)./prim.length_a_grid, 1, prim.Jr-1) .* 0.2037,
+            reshape(ones(prim.length_a_grid), prim.length_a_grid, 1) * reshape(ones(prim.Jr-1)./prim.length_a_grid, 1, prim.Jr-1) .* 0.7963, dims=3) #fraction of agents in each age group by state
     r::Float64 = 0.05 #interest rate
     w::Float64 = 1.05 #wage
     L::Float64 = 1
     K::Float64 = 3
-    res = Results(val_func_ret, pol_func_ret, val_func_wor, pol_func_wor, lab_func_wor, mu, r, w, L, K) #initialize results struct
+    b::Float64 = 0.2
+    res = Results(val_func_ret, pol_func_ret, val_func_wor, pol_func_wor, lab_func_wor, r, w, L, K, b, psi_ret, psi_wor) #initialize results struct
     prim, res #return deliverables
 end
 
 # T operator
 function Bellman(prim::Primitives,res::Results)
-    @unpack val_func_ret, val_func_wor, r, w = res #unpack value function
-    @unpack a_grid, β, n, N, Jr, b, θ, σ, γ, length_a_grid, Π, Zs, ef = prim #unpack model primitives
+    @unpack val_func_ret, val_func_wor, r, w, b = res #unpack value function
+    @unpack a_grid, β, n, N, Jr, θ, σ, γ, length_a_grid, Π, Zs, ef = prim #unpack model primitives
     v_next_ret = zeros(length_a_grid, N-Jr+1) #next guess of value function to fill
     ctmp_ret = zeros(length_a_grid) #consumption matrix to fill
     vtmp_ret = zeros(length_a_grid, length_a_grid)
@@ -140,55 +144,70 @@ function get_g(prim::Primitives, res::Results; tol::Float64 = 1e-4, err::Float64
     #println("Value function converged in ", n, " iterations.")
 end
 
-
-## Should work from here!
-
-function get_mu(prim::Primitives, res::Results; tol::Float64 = 1e-4, err::Float64 = 100.0)
-    @unpack a_grid, length_a_grid, Π, β = prim
+function get_psi(prim::Primitives, res::Results; tol::Float64 = 1e-4, err::Float64 = 100.0)
+    @unpack α, δ, θ, a_grid, length_a_grid, Π, Jr, N, ef, Zs, mu = prim
     ED = 0.01 # excess demand
 
         println("###############################################")
         println("######## SOLVING DISTRIBUTION PROBLEM #########")
         println("###############################################\n")
 
+    res.psi_wor[1, 1, 1] = sum(res.psi_wor[1,:,1])
+    res.psi_wor[1, 1, 2] = sum(res.psi_wor[1,:,2])
+    res.psi_wor[2:length_a_grid, 1,:] .= 0
+
     while abs(ED) > tol
         err = 100.0
+
+        res.b = θ * (1 - α) * res.K^α * res.L^(1-α) / sum(res.psi_ret * reshape(mu[Jr:N], N-Jr+1, 1))
         get_g(prim, res)
+
         while err>tol
-            mu_new = zeros(length_a_grid, 2)
+            psi_ret_new = zeros(length_a_grid, N-Jr+1)
+            psi_wor_new = cat(zeros(length_a_grid, Jr-1), zeros(length_a_grid, Jr-1), dims=3)
+            psi_wor_new[:,1,:] = res.psi_wor[:,1,:]
 
-            for i = 1:length_a_grid, j = 1:2
-                a_new = a_grid[i] # a'
-                mu_new[i,j] = sum(res.mu.*(res.pol_func .== a_new) * Π'[:,j])
+            for i = 1:length_a_grid, j = 1:Jr-2, k = 1:2
+                a_new = a_grid[i]
+                psi_wor_new[i,j+1,k] = sum(reshape(res.psi_wor[:,j,:].*(res.pol_func_wor[:,j,:] .== a_new), length_a_grid, 2) * Π[:,k])
             end
-            err = maximum(abs.((mu_new .- res.mu)./res.mu))
-            res.mu = mu_new
+            err1 = maximum(abs.(psi_wor_new .- res.psi_wor)./abs.(res.psi_wor))
+            res.psi_wor = psi_wor_new
+
+            for i = 1:length_a_grid
+                a_new = a_grid[i]
+                psi_ret_new[i,1] = sum(res.psi_wor[:,Jr-1,:].*(res.pol_func_wor[:,Jr-1,:].== a_new))
+            end
+
+            for i = 1:length_a_grid, j = 1:N-Jr
+                a_new = a_grid[i] # a'
+                psi_ret_new[i,j+1] = sum(res.psi_ret[:,j].*(res.pol_func_ret[:,j] .== a_new))
+            end
+            err2 = maximum(abs.(psi_ret_new .- res.psi_ret)./abs.(res.psi_ret))
+            res.psi_ret = psi_ret_new
+            err = maximum([err1, err2])
         end
 
-        ED = sum(res.pol_func .* res.mu)
+        K_old = res.K
+        K_new = 0.99 * K_old + 0.01 * (sum((res.psi_ret .* res.pol_func_ret) * mu[Jr:N]) + sum((res.psi_wor[:,:,1].*res.pol_func_wor[:,:,1]) * prim.mu[1:Jr-1]) + sum((res.psi_wor[:,:,2].*res.pol_func_wor[:,:,2]) * mu[1:Jr-1]))
+        errK = abs(K_new - K_old)/K_old
+        res.K = K_new
 
-        if ED > tol
-            q_old = res.q
-            res.q = res.q + abs(ED)/10 * (1 - q_old)/2
+        L_old = res.L
+        L_new = 0.99 * L_old + 0.01 * sum(((res.psi_wor[:,:,1].*res.lab_func_wor[:,:,1]) .* Zs[1] + (res.psi_wor[:,:,2].*res.lab_func_wor[:,:,2]) .* Zs[2]) .* repeat(ef, 1, length_a_grid)')
+        errL = abs(L_new - L_old)/L-old
+        res.L = L_new
 
-            println("\n******************************************************************\n")
-            @printf "Excess Demand = %-8.6g New Price = %.6f\n\n" ED res.q
-            println("******************************************************************\n")
-        elseif ED < -tol
-            q_old = res.q
-            res.q = res.q - abs(ED)/10 * (q_old - β)/2
-
-            println("\n******************************************************************\n")
-            @printf "Excess Demand = %-8.6g New Price = %.6f\n\n" ED res.q
-            println("******************************************************************\n")
-        end
+        res.r = α * res.K^(α-1) * res.L^(1-α) - δ
+        res.w = (1-α) * res.K^α * res.L^(-α)
+        ED = maximum([errK, errL])
     end
-            println("\n******************************************************************\n")
-            @printf "Excess Demand = %.6f is within threshold!\n\n" ED
-            println("******************************************************************\n")
+    println("\n******************************************************************\n")
+    @printf "Aggregate Error = %.6f is within threshold!\n\n" ED
+    println("******************************************************************\n")
 end
 
 #solve the model
 function Solve_model(prim::Primitives, res::Results)
-    get_mu(prim, res)
+    get_psi(prim, res)
 end
