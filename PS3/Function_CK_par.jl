@@ -1,3 +1,5 @@
+#Runs slower than single-core on Macbook M1 Pro...why?
+
 #parameters
 @everywhere @with_kw struct Primitives
     n::Float64 = 0.011 #population growth
