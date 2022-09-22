@@ -11,8 +11,8 @@
     α::Float64 = 0.36 #capital share of income
     δ::Float64 = 0.06 #depreciation rate
     a_min::Float64 = 0 #asset lower bound
-    a_max::Float64 = 5 #asset upper bound
-    length_a_grid::Int64 = 500 #number of asset grid points
+    a_max::Float64 = 50 #asset upper bound
+    length_a_grid::Int64 = 1000 #number of asset grid points
     a_grid::Array{Float64,1} = collect(range(a_min, length = length_a_grid, stop = a_max)) #asset grid
     Π::Matrix{Float64} = [0.9261 0.0739; 0.0189 0.9811] #transition matrix
     ef::Matrix{Float64} = DelimitedFiles.readdlm("/Users/Yeonggyu/Desktop/Econ 899 - Computation/PS/PS3/ef.txt", '\n')
@@ -107,7 +107,8 @@ function Bellman(prim::Primitives,res::Results)
         ltmp_wor[i,:,k] = (γ .* (1 - θ) * ef[j] .* Zs[k] .* w .- (1-γ) .* ((1+r) .* a .- a_grid)) ./ ((1-θ) * w * ef[j] * Zs[k])
         ltmp_wor[i,ltmp_wor[i,:,k] .< 0,k] .= 0
         ltmp_wor[i,ltmp_wor[i,:,k] .> 1,k] .= 1
-        ctmp_wor[:,k] = w .* (1 - θ) .* ef[Jr-1] .* Zs[k] .* ltmp_wor[i,:,k] .+ (1 + r) .* a .- a_grid
+
+        ctmp_wor[:,k] = w .* (1 - θ) .* ef[j] .* Zs[k] .* ltmp_wor[i,:,k] .+ (1 + r) .* a .- a_grid
         ctmp_wor[:,k] = ifelse.(ctmp_wor[:,k] .> 0, 1, 0).*ctmp_wor[:,k]
 
         vtmp_wor[i,:,k] = (ctmp_wor[:,k].^γ .* (1 .-ltmp_wor[i,:,k]).^(1-γ)).^(1-σ) ./ (1-σ) .+ β .* val_func_wor[:,j+1,:] * Π[k,:]
@@ -194,7 +195,7 @@ function get_psi(prim::Primitives, res::Results; tol::Float64 = 1e-4, err::Float
         res.K = K_new
 
         L_old = res.L
-        L_new = 0.99 * L_old + 0.01 * sum(((res.psi_wor[:,:,1].*res.lab_func_wor[:,:,1]) .* Zs[1] + (res.psi_wor[:,:,2].*res.lab_func_wor[:,:,2]) .* Zs[2]) .* repeat(ef, 1, length_a_grid)')
+        L_new = 0.99 * L_old + 0.01 * sum(((res.psi_wor[:,:,1].*res.lab_func_wor[:,:,1]) .* Zs[1] + (res.psi_wor[:,:,2].*res.lab_func_wor[:,:,2]) .* Zs[2]) .* repeat(ef, 1, length_a_grid)' .* repeat(mu[1:Jr-1], 1, length_a_grid)')
         errL = abs(L_new - L_old)/L_old
         res.L = L_new
 
