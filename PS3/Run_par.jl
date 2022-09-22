@@ -1,8 +1,11 @@
-using Parameters, Plots, Printf, JLD2, TableView, DelimitedFiles
+using Distributed
+addprocs(4)
 
-include("Function_CK.jl") #import the functions that solve our growth model
+@everywhere using Parameters, Plots, Printf, JLD2, TableView, DelimitedFiles, SharedArrays
 
-prim, res = Initialize()
+@everywhere include("Function_CK.jl") #import the functions that solve our growth model
+
+@everywhere prim, res = Initialize()
 
 ## Exercise 1: Value Function Iteration
 
@@ -17,16 +20,3 @@ Plots.savefig("/Users/Yeonggyu/Desktop/Econ 899 - Computation/PS/PS3/Saving20.pn
 
 # Initialize again before running
 @elapsed Solve_model(prim, res)
-
-
-# Run with $θ = 0, b = 0 in initial$
-
-# Set z = 0.5 and do it again
-# With SS
-
-# Without SS
-
-# Set γ = 1
-#With SS
-
-#Without SS
