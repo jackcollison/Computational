@@ -12,7 +12,7 @@
     δ::Float64 = 0.06 #depreciation rate
     a_min::Float64 = 0 #asset lower bound
     a_max::Float64 = 50 #asset upper bound
-    length_a_grid::Int64 = 1000 #number of asset grid points
+    length_a_grid::Int64 = 250 #number of asset grid points
     a_grid::Array{Float64,1} = collect(range(a_min, length = length_a_grid, stop = a_max)) #asset grid
     Π::Matrix{Float64} = [0.9261 0.0739; 0.0189 0.9811] #transition matrix
     ef::Matrix{Float64} = DelimitedFiles.readdlm("/Users/Yeonggyu/Desktop/Econ 899 - Computation/PS/PS3/ef.txt", '\n')
@@ -132,7 +132,7 @@ function get_g(prim::Primitives, res::Results; tol::Float64 = 1e-4, err::Float64
         err = maximum([err1, err2])
         res.val_func_wor = v_next_wor
         res.val_func_ret = v_next_ret #update value function
-        n+=1
+        n = n+1
 
             @printf "HH Iteration = %-12d Error = %.5g\n" n err
     end
@@ -150,14 +150,13 @@ function get_psi(prim::Primitives, res::Results; tol::Float64 = 1e-4, err::Float
         println("######## SOLVING DISTRIBUTION PROBLEM #########")
         println("###############################################\n")
 
-    res.psi_wor[1, 1, 1] = sum(res.psi_wor[1,:,1])
-    res.psi_wor[1, 1, 2] = sum(res.psi_wor[1,:,2])
+    res.psi_wor[1, 1, 1] = sum(res.psi_wor[:,1,1])
+    res.psi_wor[1, 1, 2] = sum(res.psi_wor[:,1,2])
     res.psi_wor[2:length_a_grid, 1,:] .= 0
 
     while abs(ED) > tol
         err = 100.0
 
-        res.b = θ * (1 - α) * res.K^α * res.L^(1-α) / sum(res.psi_ret * reshape(mu[Jr:N], N-Jr+1, 1))
         get_g(prim, res)
 
         while err>tol
@@ -187,7 +186,7 @@ function get_psi(prim::Primitives, res::Results; tol::Float64 = 1e-4, err::Float
         end
 
         K_old = res.K
-        K_new = 0.99 * K_old + 0.01 * (sum((res.psi_ret .* res.pol_func_ret) * mu[Jr:N]) + sum((res.psi_wor[:,:,1].*res.pol_func_wor[:,:,1]) * prim.mu[1:Jr-1]) + sum((res.psi_wor[:,:,2].*res.pol_func_wor[:,:,2]) * mu[1:Jr-1]))
+        K_new = 0.99 * K_old + 0.01 * (sum((res.psi_ret .* res.pol_func_ret) * mu[Jr:N]) + sum((res.psi_wor[:,:,1].*res.pol_func_wor[:,:,1]) * mu[1:Jr-1]) + sum((res.psi_wor[:,:,2].*res.pol_func_wor[:,:,2]) * mu[1:Jr-1]))
         errK = abs(K_new - K_old)/K_old
         res.K = K_new
 
@@ -198,6 +197,8 @@ function get_psi(prim::Primitives, res::Results; tol::Float64 = 1e-4, err::Float
 
         res.r = α * res.K^(α-1) * res.L^(1-α) - δ
         res.w = (1-α) * res.K^α * res.L^(-α)
+        res.b = θ * (1 - α) * res.K^α * res.L^(1-α) / sum(res.psi_ret * reshape(mu[Jr:N], N-Jr+1, 1))
+
         ED = maximum([errK, errL])
     end
     println("\n******************************************************************\n")
