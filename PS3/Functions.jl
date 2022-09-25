@@ -187,32 +187,29 @@ end
 function Solve_μ(results::Results; progress::Bool = false)
     @unpack a_grid, N, n, z_state, Ψ, Π, a_points = Primitives()
 
-    # sets distribution to zero.
+    # Sets distribution to zero.
     results.μ = zeros(N, a_points, z_state)
 
     # Fills in model-age 1 with erodgic distribution of producitivities.
     results.μ[1, 1, :] = Ψ
 
-    for j = 1:(N-1) # Iterates through model-ages
+    for j = 1:(N-1) #Loop over ages
         if progress
             println(j)
         end
-        for i_a in 1:a_points # Iterates through asset levels
+        for i_a in 1:a_points #Loop over assets
             for i_z = 1:z_state
-                if results.μ[j, i_a, i_z] == 0 # skips if no mass at j, i_a, i_z
+                if results.μ[j, i_a, i_z] == 0 #Skips if no mass at j, i_a, i_z
                     continue
                 end
-                # finds index of assets tomorrow
+                #Finds index of assets tomorrow
                 i_a_p = argmax(a_grid .== results.pol_fun[j, i_a, i_z])
-                for i_z_p = 1:z_state # iterates over productivity levels tomorrow
+                for i_z_p = 1:z_state #Loop over productivity levels tomorrow
                     results.μ[j+1, i_a_p, i_z_p] += Π[i_z, i_z_p] * results.μ[j, i_a, i_z]
                 end
             end
         end
     end
-
-    # sum(results.μ) should equal N at this point (i.e. 1 for each row)
-    # Now adjusts for population growth, so that sum(results.μ) = 1
 
     age_weights_temp = ones(N)
 
@@ -226,7 +223,7 @@ function Solve_μ(results::Results; progress::Bool = false)
 end
 
 # Market clearing
-function Calculate_labor_supply(results::Results)
+function Calculate_lab_sup(results::Results)
     @unpack Jᴿ, a_points, z_state = Primitives()
 
     e_3d = reshape(repeat(results.e, a_points), Jᴿ -1, a_points, z_state)
@@ -234,7 +231,7 @@ function Calculate_labor_supply(results::Results)
     sum(results.μ[1:(Jᴿ - 1),:,:] .* results.lab_sup .* e_3d)
 end
 
-function Calculate_capital_supply(results::Results)
+function Calculate_cap_sup(results::Results)
     @unpack a_grid, N, z_state, a_points, N = Primitives()
 
     a_grid_3d = permutedims(reshape(repeat(a_grid, N * z_state), a_points, N, z_state), (2, 1, 3))
@@ -250,32 +247,32 @@ function Solve_model(;θ::Float64 = 0.11, z::Array{Float64, 1} = [3.0, 0.5], γ:
 
     update_prices(results, K_0, L_0)
 
-    ε = 0.001  # tolerence
-    i = 0      # counter
+    ϵ = 0.001  # Tolerance level
+    i = 0      # Counter
 
     while true
         i += 1
         println("Iteration #", i)
 
-        println("Capital demand: ", K_0)
-        println("Labor demand: ", L_0)
+        println("Capital Demand: ", K_0)
+        println("Labor Demand: ", L_0)
 
         Solve_problem(results)
         Solve_μ(results)
 
-        K_1 = Calculate_capital_supply(results)
-        L_1 = Calculate_labor_supply(results)
+        K_1 = Calculate_cap_sup(results)
+        L_1 = Calculate_lab_sup(results)
 
-        println("Capital supply: ", K_1)
-        println("Labor supply: ", L_1)
+        println("Capital Supply: ", K_1)
+        println("Labor Supply: ", L_1)
 
         diff = abs(K_0 - K_1) + abs(L_0 - L_1)
 
-        println("Absolute difference: ", diff)
+        println("Absolute Diff: ", diff)
 
         println("************************************")
 
-        if diff > ε
+        if diff > ϵ
             K_0 = λ * K_1 + (1 - λ) * K_0
             L_0 = λ * L_1 + (1 - λ) * L_0
             update_prices(results, K_0, L_0)
@@ -295,13 +292,13 @@ process_results = function(results::Results)
     welfare = results.val_fun .* results.μ
     welfare = sum(welfare[isfinite.(welfare)])
 
-    # calculate coefficient of variation of wealth
+    # Calculate moments from wealth distribution
     @unpack a_grid, N, z_state, a_points, N = Primitives()
     a_grid_3d = permutedims(reshape(repeat(a_grid, N * z_state), a_points, N, z_state), (2, 1, 3))
-    wealth_mean = sum(results.μ .* a_grid_3d)
-    wealth_second_moment = sum(results.μ .* a_grid_3d .^ 2)
-    wealth_second_central_moment = wealth_second_moment - wealth_mean^2
-    cv = wealth_mean / sqrt(wealth_second_central_moment)
+    Wealth_Mean = sum(results.μ .* a_grid_3d)
+    Wealth_Variance = sum(results.μ .* a_grid_3d .^ 2)
+    Wealth_Second_Central_Moment = Wealth_Second_Moment - Wealth_Mean^2
+    Coefficient_of_Variation = Wealth_Mean / sqrt(Wealth_Second_Central_Moment)
 
     # create vector of summary statistics
     [results.θ, results.γ, results.z[1], results.k, results.l,
@@ -310,5 +307,5 @@ end
 
 function create_table(results_vector::Array{Results})
     table = DataFrames.DataFrame(Tables.table(reduce(hcat,process_results.(results_vector))'))
-    rename!(table, [:theta, :gamma, :z_H, :k, :l, :w, :r, :b, :welfare, :cv])
+    rename!(table, [:theta, :gamma, :z_H, :k, :l, :w, :r, :b, :welfare, :Coefficient_of_Variation])
 end
