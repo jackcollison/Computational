@@ -28,20 +28,20 @@ Plots.savefig("/Users/smlm/Desktop/Desktop - Stefano’s MacBook Pro/2nd Year Ph
 
 # Question 3
 # Benchmark
-@elapsed bm_ss = Solve_model()  # converges in ~9 iterations
-@elapsed bm_no_ss = Solve_model(θ = 0.0)  # converges in ~11 iterations
+@elapsed bm_ss = Solve_model()
+@elapsed bm_no_ss = Solve_model(θ = 0.0)
 
 # No productivity risk
-@elapsed riskless_ss = Solve_model(z = [0.5, 0.5]) # converges in ~12 iterations
-@elapsed riskless_no_ss = Solve_model(θ = 0.0, z = [0.5, 0.5], λ = 0.1)  # converges in ~52 iterations
+@elapsed riskless_ss = Solve_model(z = [0.5, 0.5])
+@elapsed riskless_no_ss = Solve_model(θ = 0.0, z = [0.5, 0.5], λ = 0.1)
 
 # Inelastic labor supply
-@elapsed inelastic_l_ss = Solve_model(γ = 1.0, λ = 0.8) # converges in ~6 iterations
-@elapsed inelastic_l_no_ss = Solve_model(θ = 0.0, γ = 1.0, λ = 0.8) # converges in ~7 iterations
+@elapsed inelastic_l_ss = Solve_model(γ = 1.0, λ = 0.8)
+@elapsed inelastic_l_no_ss = Solve_model(θ = 0.0, γ = 1.0, λ = 0.8)
 
-# table 1
-table_1 = create_table([bm_ss, bm_no_ss,
+# Store values in Table 1
+Table_1 = create_table([bm_ss, bm_no_ss,
                         riskless_ss, riskless_no_ss,
                         inelastic_l_ss, inelastic_l_no_ss])
 
-CSV.write("table_1.csv", table_1)
+CSV.write("Table_1.csv", Table_1)
