@@ -86,7 +86,7 @@ end
     @unpack N, n, Jᴿ, σ, β, η, Π, Π₀, α, δ, A, na = Primitives()
 
     # Set last value function value
-    res.value_func[N, :, 1] = (((1 + res.r) .* A .+ res.b).^((1 - σ) * res.γ)) ./ (1 - σ)
+    res.value_func[N, :, :] = reshape(repeat((((1 + res.r) .* A .+ res.b).^((1 - σ) * res.γ)) ./ (1 - σ), res.nz), 1, na, res.nz)
 
     # Backward induction
     for j = (N-1):-1:Jᴿ
@@ -94,7 +94,7 @@ end
         @sync @distributed for (i_a, a) in collect(enumerate(A))
             # Consumption matrix
             C = ((1 + res.r) * a + res.b) .- A
-            C = ifelse.(C .> 0, 1, 0) .* C
+            C = ifelse.(C .> 0, 1, 0) .* abs.(C)
 
             # Value matrix and maximand
             V = C.^((1 - σ) * res.γ) ./ (1 - σ) + β * res.value_func[j + 1, :, 1]
@@ -121,7 +121,7 @@ end
 
             # Consumption matrix
             C = (res.w * (1 - res.θ) * res.e[j, i_z]) .* ℓ .+ (1 + res.r) * a .- A
-            C = ifelse.(C .> 0, 1, 0) .* C
+            C = ifelse.(C .> 0, 1, 0) .* abs.(C)
 
             # Value matrix and maximand
             V = (C.^res.γ .* (1 .- ℓ).^(1 - res.γ)).^(1 - σ) ./ (1 - σ) + β * res.value_func[j + 1, :, :] * Π[i_z, :]
@@ -268,7 +268,7 @@ end
         if err <= tol
             continue
         end
-
+        
         # Update aggregate capital and labor
         res.K = ρ * res.K + (1 - ρ) * Kⁿᵉʷ
         res.L = ρ * res.L + (1 - ρ) * Lⁿᵉʷ
