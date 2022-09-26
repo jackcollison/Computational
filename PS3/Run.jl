@@ -1,3 +1,7 @@
+# Author: Jack Collison
+# Course: ECON899: Recent Advances in Economics
+# Date: September, 2022
+
 ##################################################
 ################### MODELLING ####################
 ##################################################
@@ -31,12 +35,12 @@ FormatResults(results)
 
 # Solve model with social security and no uncertainty
 @everywhere results = Initialize(0.11, [0.5 ; 0.5], 0.42)
-@time SolveModel(results, true, 0.7)
+@time SolveModel(results, true, 0.9, 5e-3)
 FormatResults(results)
 
 # Solve model without social security and no uncertainty
 @everywhere results = Initialize(0.0, [0.5 ; 0.5], 0.42)
-@time SolveModel(results, true, 0.7)
+@time SolveModel(results, true, 0.9, 5e-3)
 FormatResults(results)
 
 # Solve model with idiosyncratic uncertainty, social security, and exogenous labor

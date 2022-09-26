@@ -1,3 +1,7 @@
+# Author: Jack Collison
+# Course: ECON899: Recent Advances in Economics
+# Date: September, 2022
+
 ##################################################
 ################### MODELLING ####################
 ##################################################

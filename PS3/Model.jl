@@ -1,3 +1,7 @@
+# Author: Jack Collison
+# Course: ECON899: Recent Advances in Economics
+# Date: September, 2022
+
 ##################################################
 ################# INITIALIZATION #################
 ##################################################
@@ -27,7 +31,7 @@ using Distributed
     δ::Float64 = 0.06
 
     # Asset global constants
-    A::Array{Float64, 1} = collect(range(0.0, length = 1000, stop = 75.0))
+    A::Array{Float64, 1} = collect(range(0.0, length = 5000, stop = 75.0))
     na::Int64 = length(A)
 end
 
@@ -120,7 +124,7 @@ end
             C = ifelse.(C .> 0, 1, 0) .* C
 
             # Value matrix and maximand
-            V = (C.^((1 - σ) * res.γ)) ./ (1 - σ) + β * res.value_func[j + 1, :, :] * Π[i_z, :]
+            V = (C.^res.γ .* (1 .- ℓ).^(1 - res.γ)).^(1 - σ) ./ (1 - σ) + β * res.value_func[j + 1, :, :] * Π[i_z, :]
             Vmax = findmax(V)
 
             # Update value and policy functions
