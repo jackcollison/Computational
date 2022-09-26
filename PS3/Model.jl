@@ -31,7 +31,7 @@ using Distributed
     δ::Float64 = 0.06
 
     # Asset global constants
-    A::Array{Float64, 1} = collect(range(0.0, length = 5000, stop = 75.0))
+    A::Array{Float64, 1} = collect(range(0.0, length = 1000, stop = 75.0))
     na::Int64 = length(A)
 end
 
@@ -253,8 +253,8 @@ end
         SolveF(res, verbose)
 
         # Compute aggregate capital and labor
-        Kⁿᵉʷ = sum([sum(sum(res.F[j, m, :] .* A[m]) for m in 1:na) for j in 1:N])
-        Lⁿᵉʷ = sum([sum(sum(res.F[j, m, :] .* res.e[j,:] .* res.labor_supply[j, m, :]) for m in 1:na) for j in 1:(Jᴿ - 1)])
+        Kⁿᵉʷ = sum([sum(sum([res.F[j, m, z] * A[m] for z in 1:res.nz]) for m in 1:na) for j in 1:N])
+        Lⁿᵉʷ = sum([sum(sum([res.F[j, m, z] * res.e[j, z] * res.labor_supply[j, m, z] for z in 1:res.nz]) for m in 1:na) for j in 1:(Jᴿ - 1)])
 
         # Update error term
         err = abs(Kⁿᵉʷ - res.K) + abs(Lⁿᵉʷ - res.L)
