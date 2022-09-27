@@ -7,8 +7,7 @@
 ##################################################
 
 # Import required packages
-using Distributed
-using Parameters, LinearAlgebra, Printf, SharedArrays
+using Parameters, LinearAlgebra, Printf
 
 # Create primitives
 @with_kw struct Primitives
@@ -36,7 +35,7 @@ using Parameters, LinearAlgebra, Printf, SharedArrays
 end
 
 # Structure for results
-@everywhere mutable struct Results 
+mutable struct Results 
     # Value and policy functions
     θ::Float64
     Z::Array{Float64, 1}
@@ -60,13 +59,13 @@ function Initialize(θ::Float64, Z::Array{Float64, 1}, γ::Float64)
     prim = Primitives()
     nz = length(Z)
     e = prim.η * Z'
-    labor_supply = Array{Float64}(zeros(prim.Jᴿ - 1, prim.na, nz))
-    value_func = Array{Float64}(zeros(prim.N, prim.na, nz))
-    policy_func = Array{Float64}(zeros(prim.N, prim.na, nz))
-    F = Array{Float64}(ones(prim.N, prim.na, nz) / sum(ones(prim.N, prim.na, nz)))
+    labor_supply = zeros(prim.Jᴿ - 1, prim.na, nz)
+    value_func = zeros(prim.N, prim.na, nz)
+    policy_func = zeros(prim.N, prim.na, nz)
+    F = ones(prim.N, prim.na, nz) / sum(ones(prim.N, prim.na, nz))
 
     # Initial guesses
-    K = 3.0
+    K = 3.3
     L = 0.3
     w = 1.05
     r = 0.05
@@ -95,7 +94,7 @@ function RetireeBellman(res::Results)
     @unpack N, Jᴿ, σ, β, A, na = Primitives()
 
     # Set last value function value
-    res.value_func[N, :, 1] = RetireeUtility.((1 + res.r) .* A .+ res.b, res.γ, σ)
+    res.value_func[N, :, 1] = RetireeUtility.((1 + res.r) .* A .+ res.b, σ, res.γ)
 
     # Backward induction
     for j = (N-1):-1:Jᴿ
@@ -151,7 +150,7 @@ end
 
 # Worker utility function
 function WorkerUtility(c::Float64, ℓ::Float64, σ::Float64, γ::Float64)
-    if c > 0
+    if c > 0 && ℓ >= 0 && ℓ <= 1
         (c^γ * (1 - ℓ)^(1 - γ))^(1 - σ) / (1 - σ)
     else
         -Inf
@@ -161,7 +160,7 @@ end
 # Bellman operator for worker
 function WorkerBellman(res::Results)
     # Unpack primitives
-    @unpack N, n, Jᴿ, σ, β, η, Π, Π₀, α, δ, A, na = Primitives()
+    @unpack N, Jᴿ, σ, β, Π, A, na = Primitives()
 
     # Backward induction
     for j = (Jᴿ-1):-1:1
@@ -181,14 +180,14 @@ function WorkerBellman(res::Results)
                     ℓ = LaborDecision(A[i_a], A[i_ap], res.e[j, i_z], res.θ, res.γ, res.w, res.r)
 
                     # Solve for consumption
-                    c = (res.w * (1 - res.θ) * res.e[j, i_z]) * ℓ + (1 + res.r) * A[i_a] - A[i_ap]
+                    c = res.w * (1 - res.θ) * res.e[j, i_z] * ℓ + (1 + res.r) * A[i_a] - A[i_ap]
 
                     # Compute value to worker
                     v = WorkerUtility(c, ℓ, σ, res.γ)
 
                     # Add on next period expected value
                     for i_zp = 1:res.nz
-                        v += β * res.value_func[j + 1, i_ap, i_zp] * Π[i_z, i_zp]
+                        v += β * Π[i_z, i_zp] * res.value_func[j + 1, i_ap, i_zp]
                     end
 
                     # Check if value decreases or end of grid
@@ -205,7 +204,7 @@ function WorkerBellman(res::Results)
                         # Update value and policy functions
                         res.value_func[j, i_a, i_z] = v
                         res.policy_func[j, i_a, i_z] = A[i_ap]
-                        res.labor_supply[j, i_a, i_z] = ℓ
+                        res.labor_supply[j, i_a, i_z] = LaborDecision(A[i_a], A[i_ap], res.e[j, i_z], res.θ, res.γ, res.w, res.r)
                     end
 
                     # Update candidate maximum value
@@ -241,7 +240,7 @@ end
 function SolveF(res::Results, verbose::Bool = false)
     # Unpack primitives, initialize F
     @unpack N, n, Π, Π₀, A, na = Primitives()
-    res.F = Array{Float64}(zeros(N, na, res.nz))
+    res.F = zeros(N, na, res.nz)
     res.F[1, 1, :] = Π₀
 
     # Print statement
@@ -319,7 +318,6 @@ end
 ##############################################################
 ######################## MODEL SOLVER ########################
 ##############################################################
-
 # Functionality to run entire model
 function SolveModel(res::Results, verbose::Bool = false, ρ::Float64 = 0.9, tol::Float64 = 1e-3)
     # Initialize error and counter
@@ -361,8 +359,8 @@ function SolveModel(res::Results, verbose::Bool = false, ρ::Float64 = 0.9, tol:
         end
 
         # Update aggregate capital and labor
-        res.K = ρ * res.K + (1 - ρ) * Kⁿᵉʷ
-        res.L = ρ * res.L + (1 - ρ) * Lⁿᵉʷ
+        res.K = (1 - ρ) * res.K + ρ * Kⁿᵉʷ
+        res.L = (1 - ρ) * res.L + ρ * Lⁿᵉʷ
     end
 
     # Print convergence
