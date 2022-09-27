@@ -36,7 +36,7 @@ end
 end
 
 #function for initializing model primitives and results
-@everywhere function Initialize()
+@everywhere function Initialize(θ::Float64, Zs::Array{Float64, 1}, γ::Float64)
     prim = Primitives() #initialize primtiives
     val_func_ret = SharedArray{Float64}(zeros(prim.length_a_grid, prim.N-prim.Jr+1)) #initial value function guess
     pol_func_ret = SharedArray{Float64}(zeros(prim.length_a_grid, prim.N-prim.Jr+1)) #initial policy function guess
@@ -51,9 +51,6 @@ end
     L::Float64 = 1
     K::Float64 = 3.2
     b::Float64 = 0.2
-    θ::Float64 = 0.11
-    γ::Float64 = 0.42
-    Zs::Array{Float64} = [3.0, 0.5]
     res = Results(val_func_ret, pol_func_ret, val_func_wor, pol_func_wor, lab_func_wor, r, w, L, K, b, θ, γ, Zs, psi_ret, psi_wor) #initialize results struct
     prim, res #return deliverables
 end
