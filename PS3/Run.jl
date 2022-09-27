@@ -8,17 +8,17 @@
 
 # Include packages and set cores
 using Distributed, Plots
-addprocs(4)
+# addprocs(4)
 
 # Include model
-@everywhere include("Model.jl")
+include("Model.jl")
 include("Diagnostics.jl")
 
 # Get primitives
-@everywhere @unpack N, n, Jᴿ, σ, β, η, Π, Π₀, α, δ, A, na = Primitives()
+@unpack N, n, Jᴿ, σ, β, η, Π, Π₀, α, δ, A, na = Primitives()
 
 # Solve model with idiosyncratic uncertainty and social security
-@everywhere results = Initialize(0.11, [3.0 ; 0.5], 0.42)
+results = Initialize(0.11, [3.0 ; 0.5], 0.42)
 @time SolveModel(results, true, 0.7)
 
 # Plot value function of retiree at model-age fifty and policy function of worker at model-age twenty
@@ -34,12 +34,12 @@ FormatResults(results)
 FormatResults(results)
 
 # Solve model with social security and no uncertainty
-@everywhere results = Initialize(0.11, [0.5 ; 0.5], 0.42)
+@everywhere results = Initialize(0.11, [0.5], 0.42)
 @time SolveModel(results, true, 0.9, 5e-3)
 FormatResults(results)
 
 # Solve model without social security and no uncertainty
-@everywhere results = Initialize(0.0, [0.5 ; 0.5], 0.42)
+@everywhere results = Initialize(0.0, [0.5], 0.42)
 @time SolveModel(results, true, 0.9, 5e-3)
 FormatResults(results)
 
