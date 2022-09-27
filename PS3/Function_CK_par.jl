@@ -57,7 +57,7 @@ end
 
 # T operator
 @everywhere function Bellman(prim::Primitives,res::Results)
-    @unpack val_func_ret, val_func_wor, r, w, b θ, γ, Zs = res #unpack value function
+    @unpack val_func_ret, val_func_wor, r, w, b, θ, γ, Zs = res #unpack value function
     @unpack a_grid, β, n, N, Jr, σ, length_a_grid, Π, ef = prim #unpack model primitives
     ctmp_ret = SharedArray{Float64}(zeros(length_a_grid)) #consumption matrix to fill
     vtmp_ret = SharedArray{Float64}(zeros(length_a_grid))
