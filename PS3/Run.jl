@@ -22,6 +22,7 @@ results = Initialize(0.11, [3.0 ; 0.5], 0.42)
 
 # Plot various functions at various model-ages
 plot(A, results.value_func[50, :, 1], labels = "Value Function", legend = :bottomright, title = "Value Function (Model-Age 50)")
+plot(A, results.value_func[20, :, 1], labels = "Value Function", legend = :bottomright, title = "Value Function (Model-Age 20)")
 plot([A A], [A results.policy_func[20, :, :]], labels = ["45 degree" "High Type" "Low Type"], legend = :bottomright, title = "Savings Function (Model-Age 20)")
 plot(A, results.labor_supply[20, :, :], labels = ["High Type" "Low Type"], title = "Labor Decision (Model-Age 20)")
 plot(A, results.policy_func[20, :, :] .- A, labels = ["High Type" "Low Type"], title = "Savings Decision (Model-Age 20)")

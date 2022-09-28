@@ -133,8 +133,9 @@ function RetireeBellman(res::Results)
         end
     end
 
-    # Fill in missing points
+    # Check uncertainty
     if res.nz >= 2
+        # Fill in missing points
         for i_z = 2:res.nz
             res.policy_func[:, :, i_z] = res.policy_func[:, :, 1]
             res.value_func[:, :, i_z] = res.policy_func[:, :, 1]
@@ -145,13 +146,13 @@ end
 # Compute labor decision
 function LaborDecision(a::Float64, ap::Float64, e::Float64, θ::Float64, γ::Float64, w::Float64, r::Float64)
     # Compute labor decision
-    min(1, max(0, (γ * (1 - θ) * e * w - (1 - γ) * ((1 + r) * a - ap)) / ((1 - θ) * w * e)))
+    min(1, max(0, (γ * (1 - θ) * e * w - (1 - γ) * ((1 + r) * a - ap)) / ((1 - θ) * e * w)))
 end
 
 # Worker utility function
-function WorkerUtility(c::Float64, ℓ::Float64, σ::Float64, γ::Float64)
+function WorkerUtility(c::Float64, ℓ::Float64, γ::Float64, σ::Float64)
     if c > 0 && ℓ >= 0 && ℓ <= 1
-        (c^γ * (1 - ℓ)^(1 - γ))^(1 - σ) / (1 - σ)
+        (((c^γ) * ((1 - ℓ)^(1 - γ)))^(1 - σ)) / (1-σ)
     else
         -Inf
     end
@@ -176,16 +177,12 @@ function WorkerBellman(res::Results)
 
                 # Iterate over asset choices tomorrow
                 for i_ap in lowest_index:na
-                    # Solve for labor decision
+                    # Solve for labor and consumption decisions, and compute utility
                     ℓ = LaborDecision(A[i_a], A[i_ap], res.e[j, i_z], res.θ, res.γ, res.w, res.r)
-
-                    # Solve for consumption
                     c = res.w * (1 - res.θ) * res.e[j, i_z] * ℓ + (1 + res.r) * A[i_a] - A[i_ap]
+                    v = WorkerUtility(c, ℓ, res.γ, σ)
 
-                    # Compute value to worker
-                    v = WorkerUtility(c, ℓ, σ, res.γ)
-
-                    # Add on next period expected value
+                    # Increment by expected value
                     for i_zp = 1:res.nz
                         v += β * Π[i_z, i_zp] * res.value_func[j + 1, i_ap, i_zp]
                     end
@@ -204,7 +201,7 @@ function WorkerBellman(res::Results)
                         # Update value and policy functions
                         res.value_func[j, i_a, i_z] = v
                         res.policy_func[j, i_a, i_z] = A[i_ap]
-                        res.labor_supply[j, i_a, i_z] = LaborDecision(A[i_a], A[i_ap], res.e[j, i_z], res.θ, res.γ, res.w, res.r)
+                        res.labor_supply[j, i_a, i_z] = ℓ
                     end
 
                     # Update candidate maximum value
@@ -251,19 +248,14 @@ function SolveF(res::Results, verbose::Bool = false)
     # Age profile iteration
     for j = 1:(N - 1)
         # Iterate over state space
-        for i_a = 1:na
-            for i_z = 1:res.nz
-                # Skip if no mass
-                if results.F[j, i_a, i_z] == 0
-                    continue
-                end
-
+        for i_a = 1:na, i_z = 1:res.nz
+            # Skip if no mass
+            if results.F[j, i_a, i_z] > 0
                 # Get index of grid
                 i_ap = argmax(A .== res.policy_func[j, i_a, i_z])
                 
-                # Loop over productivity tomorrow
+                # Increment probability
                 for i_zp = 1:res.nz
-                    # Increment distribution
                     res.F[j + 1, i_ap, i_zp] += Π[i_z, i_zp] * res.F[j, i_a, i_z]
                 end
             end
