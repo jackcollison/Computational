@@ -22,8 +22,6 @@ using Parameters, LinearAlgebra, Printf
 
     # Productivity global constants
     η::Array{Float64, 1} = map(x -> parse(Float64, x), readlines("/Users/jackcollison/Desktop/Wisconsin/Coursework/Second Year/Computational/PS3/ef.txt"))
-    Π::Array{Float64, 2} = [0.9261 0.0739 ; 0.0189 0.9811]
-    Π₀::Array{Float64} = [0.2037 0.7963]
 
     # Production global constants
     α::Float64 = 0.36
@@ -40,6 +38,8 @@ mutable struct Results
     θ::Float64
     Z::Array{Float64, 1}
     nz::Int64
+    Π::Array{Float64, 2}
+    Π₀::Array{Float64}
     e::Array{Float64, 2}
     γ::Float64
     value_func::Array{Float64}
@@ -54,7 +54,7 @@ mutable struct Results
 end
 
 # Initialization function
-function Initialize(θ::Float64, Z::Array{Float64, 1}, γ::Float64)
+function Initialize(θ::Float64, Z::Array{Float64, 1}, γ::Float64, Π::Array{Float64}, Π₀::Array{Float64, 2})
     # Initialize results
     prim = Primitives()
     nz = length(Z)
@@ -72,7 +72,7 @@ function Initialize(θ::Float64, Z::Array{Float64, 1}, γ::Float64)
     b = 0.2
 
     # Return structure
-    Results(θ, Z, nz, e, γ, value_func, policy_func, labor_supply, F, K, L, w, r, b)
+    Results(θ, Z, nz, Π, Π₀, e, γ, value_func, policy_func, labor_supply, F, K, L, w, r, b)
 end
 
 ######################################################
@@ -80,9 +80,9 @@ end
 ######################################################
 
 # Retiree utility function
-function RetireeUtility(c::Float64, σ::Float64, γ::Float64)
-    if c > 0
-        c^((1 - σ) * γ) / (1 - σ)
+function RetireeUtility(c::Float64, γ::Float64, σ::Float64)
+    if (c > 0)
+        (c^((1 - σ) * γ)) / (1 - σ)
     else
         -Inf
     end
@@ -91,10 +91,10 @@ end
 # Bellman operator for retiree
 function RetireeBellman(res::Results)
     # Unpack primitives
-    @unpack N, Jᴿ, σ, β, A, na = Primitives()
+    @unpack N, Jᴿ, β, σ, A, na = Primitives()
 
     # Set last value function value
-    res.value_func[N, :, 1] = RetireeUtility.((1 + res.r) .* A .+ res.b, σ, res.γ)
+    res.value_func[N, :, 1] = RetireeUtility.(A, res.γ, σ)
 
     # Backward induction
     for j = (N-1):-1:Jᴿ
@@ -102,43 +102,42 @@ function RetireeBellman(res::Results)
         lowest_index = 1
 
         # Iterate over asset choices today
-        for i_a in 1:na
-            # Candidate maximum value, budget
-            max_util = -Inf
+        for i_a = 1:na
+
+            # Initialize value, calculate budget
             budget = (1 + res.r) * A[i_a] + res.b
+            max_util = -Inf
 
-            # Iterate over asset chocies tomorrow
-            for i_ap in lowest_index:na
+            # Iterate over asset choies tomorrow
+            for i_ap = lowest_index:na
                 # Compute value to retiree
-                v = RetireeUtility(budget - A[i_ap], σ, res.γ) + β * res.value_func[j + 1, i_ap, 1]
+                v = RetireeUtility(budget - A[i_ap], res.γ, σ) + β * res.value_func[j + 1, i_ap, 1]
 
-                # Check if value decreases or end of grid
+                # Check decreasing utility or end of grid
                 if v < max_util
-                    # Update value and policy functions
+                    # Update results and break
                     res.value_func[j, i_a, 1] = max_util
                     res.policy_func[j, i_a, 1] = A[i_ap - 1]
-
-                    # Update lower bound and break
                     lowest_index = i_ap - 1
                     break
                 elseif i_ap == na
-                    # Update value and policy functions
+                    # Update results
                     res.value_func[j, i_a, 1] = v
                     res.policy_func[j, i_a, 1] = A[i_ap]
                 end
 
-                # Update candidate maximum value
+                # Update maximum utility
                 max_util = v
             end
         end
     end
 
-    # Check uncertainty
+    # Check if there is uncertainty
     if res.nz >= 2
-        # Fill in missing points
         for i_z = 2:res.nz
+            # Fill in values for other productivities
             res.policy_func[:, :, i_z] = res.policy_func[:, :, 1]
-            res.value_func[:, :, i_z] = res.policy_func[:, :, 1]
+            res.value_func[:, :, i_z] = res.value_func[:, :, 1]
         end
     end
 end
@@ -146,13 +145,14 @@ end
 # Compute labor decision
 function LaborDecision(a::Float64, ap::Float64, e::Float64, θ::Float64, γ::Float64, w::Float64, r::Float64)
     # Compute labor decision
-    min(1, max(0, (γ * (1 - θ) * e * w - (1 - γ) * ((1 + r) * a - ap)) / ((1 - θ) * e * w)))
+    interior = (γ * (1 - θ) * e * w - (1 - γ) * ((1 + r) * a - ap)) / ((1 - θ) * e * w)
+    min(1, max(0, interior))
 end
 
 # Worker utility function
 function WorkerUtility(c::Float64, ℓ::Float64, γ::Float64, σ::Float64)
-    if c > 0 && ℓ >= 0 && ℓ <= 1
-        (((c^γ) * ((1 - ℓ)^(1 - γ)))^(1 - σ)) / (1-σ)
+    if (c > 0 && ℓ >= 0 && ℓ <= 1)
+        (((c^γ) * ((1 - ℓ)^(1 - γ)))^(1 - σ)) / (1 - σ)
     else
         -Inf
     end
@@ -161,50 +161,48 @@ end
 # Bellman operator for worker
 function WorkerBellman(res::Results)
     # Unpack primitives
-    @unpack N, Jᴿ, σ, β, Π, A, na = Primitives()
+    @unpack Jᴿ, β, σ, A, na = Primitives()
 
-    # Backward induction
+    # Backwards induction
     for j = (Jᴿ-1):-1:1
-        # Iterate over possible states
+        # Iterate over productivity today
         for i_z = 1:res.nz
             # Lower bound for policy
             lowest_index = 1
 
             # Iterate over asset choices today
-            for i_a in 1:na
-                # Candidate maximum value
+            for i_a = 1:na
+                # Initialize value
                 max_util = -Inf
 
                 # Iterate over asset choices tomorrow
-                for i_ap in lowest_index:na
-                    # Solve for labor and consumption decisions, and compute utility
+                for i_ap = lowest_index:na
+                    # Calculate labor decision, consumption, and value
                     ℓ = LaborDecision(A[i_a], A[i_ap], res.e[j, i_z], res.θ, res.γ, res.w, res.r)
-                    c = res.w * (1 - res.θ) * res.e[j, i_z] * ℓ + (1 + res.r) * A[i_a] - A[i_ap]
+                    c = res.w * (1 - res.θ) * res.e[j,i_z] * ℓ + (1 + res.r) * A[i_a] - A[i_ap]
                     v = WorkerUtility(c, ℓ, res.γ, σ)
 
-                    # Increment by expected value
+                    # Add expected value from tomorrow
                     for i_zp = 1:res.nz
-                        v += β * Π[i_z, i_zp] * res.value_func[j + 1, i_ap, i_zp]
+                        v += β * res.Π[i_z, i_zp] * res.value_func[j + 1, i_ap, i_zp]
                     end
 
-                    # Check if value decreases or end of grid
+                    # Check decreasing utility or end of grid
                     if v < max_util
-                        # Update value and policy functions
+                        # Update results and break
                         res.value_func[j, i_a, i_z] = max_util
                         res.policy_func[j, i_a, i_z] = A[i_ap - 1]
                         res.labor_supply[j, i_a, i_z] = LaborDecision(A[i_a], A[i_ap - 1], res.e[j, i_z], res.θ, res.γ, res.w, res.r)
-
-                        # Update lower bound and break
                         lowest_index = i_ap - 1
                         break
                     elseif i_ap == na
-                        # Update value and policy functions
+                        # Update results
                         res.value_func[j, i_a, i_z] = v
                         res.policy_func[j, i_a, i_z] = A[i_ap]
-                        res.labor_supply[j, i_a, i_z] = ℓ
+                        res.labor_supply[j, i_a, i_z] = LaborDecision(A[i_a], A[i_ap], res.e[j,i_z], res.θ, res.γ, res.w, res.r)
                     end
 
-                    # Update candidate maximum value
+                    # Update maximum value
                     max_util = v
                 end
             end
@@ -236,9 +234,9 @@ end
 # Functionality to solve stationary distribution problem
 function SolveF(res::Results, verbose::Bool = false)
     # Unpack primitives, initialize F
-    @unpack N, n, Π, Π₀, A, na = Primitives()
+    @unpack N, n, A, na = Primitives()
     res.F = zeros(N, na, res.nz)
-    res.F[1, 1, :] = Π₀
+    res.F[1, 1, :] = res.Π₀
 
     # Print statement
     if verbose
@@ -250,13 +248,13 @@ function SolveF(res::Results, verbose::Bool = false)
         # Iterate over state space
         for i_a = 1:na, i_z = 1:res.nz
             # Skip if no mass
-            if results.F[j, i_a, i_z] > 0
+            if res.F[j, i_a, i_z] > 0
                 # Get index of grid
                 i_ap = argmax(A .== res.policy_func[j, i_a, i_z])
                 
                 # Increment probability
                 for i_zp = 1:res.nz
-                    res.F[j + 1, i_ap, i_zp] += Π[i_z, i_zp] * res.F[j, i_a, i_z]
+                    res.F[j + 1, i_ap, i_zp] += res.Π[i_z, i_zp] * res.F[j, i_a, i_z]
                 end
             end
         end

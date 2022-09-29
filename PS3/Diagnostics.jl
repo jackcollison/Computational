@@ -22,7 +22,7 @@ end
 # Compute coefficient of variation
 function ComputeCV(res::Results)
     # Unpack primitives
-    @unpack N, n, Jᴿ, σ, β, η, Π, Π₀, α, δ, A, na = Primitives()
+    @unpack N, A, na = Primitives()
 
     # Reshape wealth for matrix multiplication
     W = reshape(repeat(A, res.nz * N), N, na, res.nz)

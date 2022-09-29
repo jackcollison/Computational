@@ -14,10 +14,29 @@ include("Model.jl")
 include("Diagnostics.jl")
 
 # Get primitives
-@unpack N, n, Jᴿ, σ, β, η, Π, Π₀, α, δ, A, na = Primitives()
+@unpack N, n, Jᴿ, σ, β, η, α, δ, A, na = Primitives()
+
+# Social security scenarios
+SS = 0.11
+NSS = 0.0
+
+# Idiosyncratic uncertainty scenarios
+Z = [3.0 ; 0.5]
+Zᶜ = [0.5]
+Π = [0.9261 0.0739; 0.0189 0.9811] 
+Πᶜ = hcat(1.)
+Π₀ = [0.2037 0.7963]
+Π₀ᶜ = hcat(1.)
+
+# Labor elasticity scenarios
+γ = 0.42
+γᶜ = 1.0
+
+# Verbosity
+verbose = true
 
 # Solve household problem with idiosyncratic uncertainty and social security
-results = Initialize(0.11, [3.0 ; 0.5], 0.42)
+results = Initialize(SS, Z, γ, Π, Π₀)
 @time SolveHH(results)
 
 # Plot various functions at various model-ages
@@ -28,31 +47,31 @@ plot(A, results.labor_supply[20, :, :], labels = ["High Type" "Low Type"], title
 plot(A, results.policy_func[20, :, :] .- A, labels = ["High Type" "Low Type"], title = "Savings Decision (Model-Age 20)")
 
 # Solve model with idiosyncratic uncertainty and social security
-results = Initialize(0.11, [3.0 ; 0.5], 0.42)
-@time SolveModel(results, true, 0.7)
+results = Initialize(SS, Z, γ, Π, Π₀)
+@time SolveModel(results, verbose, 0.7)
 FormatResults(results)
 
 # Solve model with idiosyncratic uncertainty and no social security
-results = Initialize(0.0, [3.0 ; 0.5], 0.42)
-@time SolveModel(results, true, 0.7)
+results = Initialize(NSS, Z, γ, Π, Π₀)
+@time SolveModel(results, verbose, 0.7)
 FormatResults(results)
 
 # Solve model with social security and no uncertainty
-results = Initialize(0.11, [0.5], 0.42)
-@time SolveModel(results, true, 0.9, 5e-3)
+results = Initialize(SS, Zᶜ, γ, Πᶜ, Π₀ᶜ)
+@time SolveModel(results, verbose, 0.1)
 FormatResults(results)
 
 # Solve model without social security and no uncertainty
-results = Initialize(0.0, [0.5], 0.42)
-@time SolveModel(results, true, 0.9, 5e-3)
+results = Initialize(NSS, Zᶜ, γ, Πᶜ, Π₀ᶜ)
+@time SolveModel(results, verbose, 0.1)
 FormatResults(results)
 
 # Solve model with idiosyncratic uncertainty, social security, and exogenous labor
-results = Initialize(0.11, [3.0 ; 0.5], 1.0)
-@time SolveModel(results, true, 0.7)
+results = Initialize(SS, Z, γᶜ, Π, Π₀)
+@time SolveModel(results, verbose, 0.7)
 FormatResults(results)
 
 # Solve model with idiosyncratic uncertainty, no social security, and exogenous labor
-results = Initialize(0.0, [3.0 ; 0.5], 1.0)
-@time SolveModel(results, true, 0.7)
+results = Initialize(NSS, Z, γᶜ, Π, Π₀)
+@time SolveModel(results, verbose, 0.7)
 FormatResults(results)
