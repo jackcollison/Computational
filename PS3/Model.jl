@@ -199,7 +199,7 @@ function WorkerBellman(res::Results)
                         # Update results
                         res.value_func[j, i_a, i_z] = v
                         res.policy_func[j, i_a, i_z] = A[i_ap]
-                        res.labor_supply[j, i_a, i_z] = LaborDecision(A[i_a], A[i_ap], res.e[j,i_z], res.θ, res.γ, res.w, res.r)
+                        res.labor_supply[j, i_a, i_z] = ℓ
                     end
 
                     # Update maximum value
