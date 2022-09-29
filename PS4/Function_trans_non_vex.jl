@@ -77,23 +77,30 @@ end
  function Bellman_ret(prim::Primitives,res::Results, t::Int64)
     @unpack r, γ, b = res #unpack value function
     @unpack a_grid, β, N, Jr, σ, length_a_grid = prim #unpack model primitives
-    ctmp_ret = Array{Float64}(zeros(length_a_grid)) #consumption matrix to fill
-    vtmp_ret = Array{Float64}(zeros(length_a_grid))
-
-    ctmp_ret = (1+r) .* a_grid .+ b
-    res.val_func_ret_tran[:,N-Jr+1,t] = ctmp_ret.^((1-σ)*γ) ./ (1 - σ)
+    ctmp_ter = (1+r) * a_grid .+ b
+    res.val_func_ret_tran[:,N-Jr+1,t] = ctmp_ter.^((1-σ)*γ) ./ (1 - σ)
 
     for j in N-Jr:-1:1 # retirement group iteration
+      choice_lower = 1
       for a_index = 1:length_a_grid
-            a = a_grid[a_index] #value of k
-            ctmp_ret = (1+r) * a .+ b .- a_grid
-            ctmp_ret = ifelse.(ctmp_ret .> 0, 1, 0).*ctmp_ret
+         a = a_grid[a_index] #value of k
+         val_up = -Inf
+            for ap_index = choice_lower:length_a_grid
+            ctmp_ret = (1+r) * a + b - a_grid[ap_index]
+            ctmp_ret = ifelse(ctmp_ret > 0, 1, 0)*ctmp_ret
 
-            vtmp_ret = ctmp_ret.^((1-σ)*γ) ./(1-σ) .+ β .* res.val_func_ret_tran[:,j+1,t+1]
-            V = findmax(vtmp_ret)
-
-            res.val_func_ret_tran[a_index,j,t] = V[1]
-            res.pol_func_ret_tran[a_index,j,t] = a_grid[V[2]]
+            vtmp_ret = ctmp_ret^((1-σ)*γ) /(1-σ) + β * res.val_func_ret_tran[ap_index,j+1,t+1]
+               if vtmp_ret < val_up
+                  res.val_func_ret_tran[a_index,j,t] = val_up
+                  res.pol_func_ret_tran[a_index,j,t] = a_grid[ap_index-1]
+                  choice_lower = ap_index - 1
+                  break
+               elseif ap_index == length_a_grid
+                  res.val_func_ret_tran[a_index,j,t] = vtmp_ret
+                  res.pol_func_ret_tran[a_index,j,t] = a_grid[ap_index]
+               end
+            val_up = vtmp_ret
+            end
         end
     end
 end
@@ -101,46 +108,63 @@ end
  function Bellman_wor(prim::Primitives, res::Results, t::Int64)
     @unpack r, w, b, θ, γ, Zs = res #unpack value function
     @unpack a_grid, β, N, Jr, σ, length_a_grid, Π, ef, T = prim #unpack model primitives
-
-    ctmp_wor = Array{Float64}(zeros(length_a_grid))
-    vtmp_wor = Array{Float64}(zeros(length_a_grid))
-    ltmp_wor = Array{Float64}(zeros(length_a_grid))
     θ = θ * (t <= 1)
 
-     for (i, j) in collect(Iterators.product(1:length_a_grid, 1:2))
-        ltmp_wor = (γ .* (1 - θ) * ef[Jr-1] .* Zs[j] .* w .- (1-γ) .* ((1+r) .* a_grid[i] .- a_grid)) ./ ((1-θ) * w * ef[Jr-1] * Zs[j])
-        ltmp_wor[ltmp_wor.< 0] .= 0
-        ltmp_wor[ltmp_wor.> 1] .= 1
+    for j = 1:2
+        choice_lower = 1
+        for i = 1:length_a_grid
+           a = a_grid[i]
+           val_up = -Inf
+           for ip = choice_lower:length_a_grid
+             ltmp_wor = min(1, max((γ * (1 - θ) * ef[Jr-1] * Zs[j] * w - (1-γ) * ((1+r) * a - a_grid[ip])) / ((1-θ) * w * ef[Jr-1] * Zs[j]), 0))
+             ctmp_wor = w * (1 - θ) * ef[Jr-1] * Zs[j] * ltmp_wor + (1 + r) * a - a_grid[ip]
+             ctmp_wor = ifelse(ctmp_wor > 0, 1, 0)*ctmp_wor
+             vtmp_wor = (ctmp_wor^γ * (1 -ltmp_wor)^(1-γ))^(1-σ) / (1-σ) + β * res.val_func_ret_tran[ip,1,t+1]
 
-        ctmp_wor = w .* (1 - θ) .* ef[Jr-1] .* Zs[j] .* ltmp_wor .+ (1 + r) .* a_grid[i] .- a_grid
-        ctmp_wor = ifelse.(ctmp_wor .> 0, 1, 0).*ctmp_wor
-        vtmp_wor = (ctmp_wor.^γ .* (1 .-ltmp_wor).^(1-γ)).^(1-σ) ./ (1-σ) .+ β .* res.val_func_ret_tran[:,1,t+1]
-
-        V = findmax(vtmp_wor)
-
-        res.val_func_wor_tran[i,Jr-1,j,t] = V[1]
-        res.pol_func_wor_tran[i,Jr-1,j,t] = a_grid[V[2]]
-        res.lab_func_wor_tran[i,Jr-1,j,t] = ltmp_wor[V[2]]
+             if vtmp_wor < val_up
+                res.val_func_wor_tran[i,Jr-1,j,t] = val_up
+                res.pol_func_wor_tran[i,Jr-1,j,t] = a_grid[ip-1]
+                res.lab_func_wor_tran[i,Jr-1,j,t] = min(1, max((γ * (1 - θ) * ef[Jr-1] * Zs[j]* w - (1-γ)* ((1+r) * a - a_grid[ip-1])) / ((1-θ) * w * ef[Jr-1] * Zs[j]), 0))
+                choice_lower = ip - 1
+                break
+             elseif ip == length_a_grid
+                res.val_func_wor_tran[i,Jr-1,j,t] = vtmp_wor
+                res.pol_func_wor_tran[i,Jr-1,j,t] = a_grid[ip]
+                res.lab_func_wor_tran[i,Jr-1,j,t] = min(1, max((γ * (1 - θ) * ef[Jr-1] * Zs[j] * w - (1-γ) * ((1+r) * a - a_grid[ip])) / ((1-θ) * w * ef[Jr-1] * Zs[j]), 0))
+             end
+             val_up = vtmp_wor
+          end
+       end
     end
 
     for j in Jr-2:-1:1
-      for (i,k) in collect(Iterators.product(1:length_a_grid, 1:2))
-        a = a_grid[i]
-        ltmp_wor= (γ .* (1 - θ) * ef[j] .* Zs[k] .* w .- (1-γ) .* ((1+r) .* a .- a_grid)) ./ ((1-θ) * w * ef[j] * Zs[k])
-        ltmp_wor[ltmp_wor .< 0] .= 0
-        ltmp_wor[ltmp_wor .> 1] .= 1
+      for k = 1:2
+         choice_lower = 1
+         for i = 1:length_a_grid
+            a = a_grid[i]
+            val_up = -Inf
+            for ip = choice_lower:length_a_grid
+               ltmp_wor= min(1, max((γ * (1 - θ) * ef[j] * Zs[k] * w - (1-γ) * ((1+r) * a - a_grid[ip])) / ((1-θ) * w * ef[j] * Zs[k]), 0))
+               ctmp_wor = w * (1 - θ) * ef[j] * Zs[k] * ltmp_wor + (1 + r) * a - a_grid[ip]
+               ctmp_wor = ifelse(ctmp_wor> 0, 1, 0)*ctmp_wor
+               vtmp_wor = (ctmp_wor^γ * (1 - ltmp_wor)^(1-γ))^(1-σ) / (1-σ) + β * sum(res.val_func_wor_tran[ip,j+1,:,t+1].* Π[k,:])
 
-        ctmp_wor = w .* (1 - θ) .* ef[j] .* Zs[k] .* ltmp_wor .+ (1 + r) .* a .- a_grid
-        ctmp_wor = ifelse.(ctmp_wor.> 0, 1, 0).*ctmp_wor
-
-        vtmp_wor = (ctmp_wor.^γ .* (1 .- ltmp_wor).^(1-γ)).^(1-σ) ./ (1-σ) .+ β .* res.val_func_wor_tran[:,j+1,:,t+1] * Π[k,:]
-
-        V = findmax(vtmp_wor)
-        res.val_func_wor_tran[i,j,k,t] = V[1]
-        res.pol_func_wor_tran[i,j,k,t] = a_grid[V[2]]
-        res.lab_func_wor_tran[i,j,k,t] = ltmp_wor[V[2]]
+               if vtmp_wor < val_up
+                  res.val_func_wor_tran[i,j,k,t] = val_up
+                  res.pol_func_wor_tran[i,j,k,t] = a_grid[ip-1]
+                  res.lab_func_wor_tran[i,j,k,t] = min(1, max((γ * (1 - θ) * ef[j] * Zs[k] * w - (1-γ) * ((1+r) * a - a_grid[ip-1])) / ((1-θ) * w * ef[j] * Zs[k]), 0))
+                  choice_lower = ip - 1
+                  break
+               elseif ip == length_a_grid
+                  res.val_func_wor_tran[i,j,k,t] = vtmp_wor
+                  res.pol_func_wor_tran[i,j,k,t] = a_grid[ip]
+                  res.lab_func_wor_tran[i,j,k,t] = min(1, max((γ * (1 - θ) * ef[j] * Zs[k] * w - (1-γ) * ((1+r) * a - a_grid[ip])) / ((1-θ) * w * ef[j] * Zs[k]), 0))
+               end
+               val_up = vtmp_wor
+            end
         end
-    end
+     end
+   end
 end
 
  function get_dist(prim::Primitives, res::Results, t::Int64)
@@ -216,7 +240,7 @@ end
             L_old = res.Ls[t]
             K_old = Ks_old[t+1]
 
-            L_new = 0.99 * L_old + 0.01 * sum(((res.psi_wor_tran[:,:,1,t].*res.lab_func_wor_tran[:,:,1,t]) .* Zs[1] + (res.psi_wor_tran[:,:,2,t].*res.lab_func_wor_tran[:,:,2,t]) .* Zs[2]) .* repeat(ef, 1, length_a_grid)' .* repeat(mu[1:Jr-1], 1, length_a_grid)')
+            L_new = sum(((res.psi_wor_tran[:,:,1,t].*res.lab_func_wor_tran[:,:,1,t]) .* Zs[1] + (res.psi_wor_tran[:,:,2,t].*res.lab_func_wor_tran[:,:,2,t]) .* Zs[2]) .* repeat(ef, 1, length_a_grid)' .* repeat(mu[1:Jr-1], 1, length_a_grid)')
             K_new = 0.99 * K_old + 0.01 * (sum((res.psi_ret_tran[:,:,t] .* res.pol_func_ret_tran[:,:,t]) * mu[Jr:N]) + sum((res.psi_wor_tran[:,:,1,t].*res.pol_func_wor_tran[:,:,1,t]) * mu[1:Jr-1]) + sum((res.psi_wor_tran[:,:,2,t].*res.pol_func_wor_tran[:,:,2,t]) * mu[1:Jr-1]))
             Ls_new[t] = L_new
             Ks_new[t+1] = K_new
