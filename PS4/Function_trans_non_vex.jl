@@ -67,7 +67,7 @@ end
     r::Float64 = 0.05 #interest rate
     w::Float64 = 0.99 #wage
     b::Float64 = 0.2
-    Ls::Array{Float64} = ones(prim.T) .* 0.5
+    Ls::Array{Float64} = ones(prim.T) .* 0.3658 # initial guess of aggregate labor
     Ks::Array{Float64} = collect(range(K1, K2, length=prim.T+1))
     res = Results(val_func_ret_tran, pol_func_ret_tran, val_func_wor_tran, pol_func_wor_tran, lab_func_wor_tran, r, w, b, θ, γ, Zs, Ls, Ks, psi_ret_tran, psi_wor_tran) #initialize results struct
     prim, res #return deliverables
