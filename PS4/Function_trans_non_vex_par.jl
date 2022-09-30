@@ -243,17 +243,15 @@ end
             K_old = Ks_old[t+1]
 
             L_new = sum(((res.psi_wor_tran[:,:,1,t].*res.lab_func_wor_tran[:,:,1,t]) .* Zs[1] + (res.psi_wor_tran[:,:,2,t].*res.lab_func_wor_tran[:,:,2,t]) .* Zs[2]) .* repeat(ef, 1, length_a_grid)' .* repeat(mu[1:Jr-1], 1, length_a_grid)')
-            K_new = 0.99 * K_old + 0.01 * (sum((res.psi_ret_tran[:,:,t] .* res.pol_func_ret_tran[:,:,t]) * mu[Jr:N]) + sum((res.psi_wor_tran[:,:,1,t].*res.pol_func_wor_tran[:,:,1,t]) * mu[1:Jr-1]) + sum((res.psi_wor_tran[:,:,2,t].*res.pol_func_wor_tran[:,:,2,t]) * mu[1:Jr-1]))
+            K_new = sum((res.psi_ret_tran[:,:,t] .* res.pol_func_ret_tran[:,:,t]) * mu[Jr:N]) + sum((res.psi_wor_tran[:,:,1,t].*res.pol_func_wor_tran[:,:,1,t]) * mu[1:Jr-1]) + sum((res.psi_wor_tran[:,:,2,t].*res.pol_func_wor_tran[:,:,2,t]) * mu[1:Jr-1])
 
             Ls_new[t] = L_new
             Ks_new[t+1] = K_new
         end
-        errL = maximum(abs.(Ls_new - Ls_old))
-        errK = maximum(abs.(Ks_new - Ks_old))
-        err = max(errL, errK)
+        err = maximum(abs.(Ks_new - Ks_old))
         println("Aggregate Error: ", err, "in Iteration: ", counter)
-        res.Ks = Ks_new
-        res.Ls = Ls_new
+        res.Ks = 0.01 .* Ks_new + 0.99 .* Ks_old
+        res.Ls = 0.01 .* Ls_new + 0.99 .* Ls_old
     end
 end
 
