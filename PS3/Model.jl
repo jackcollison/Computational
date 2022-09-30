@@ -97,7 +97,7 @@ function RetireeBellman(res::Results)
     res.value_func[N, :, 1] = RetireeUtility.(A, res.γ, σ)
 
     # Backward induction
-    for j = (N-1):-1:Jᴿ
+    for j = (N - 1):-1:Jᴿ
         # Lower bound for policy
         lowest_index = 1
 
@@ -164,7 +164,7 @@ function WorkerBellman(res::Results)
     @unpack Jᴿ, β, σ, A, na = Primitives()
 
     # Backwards induction
-    for j = (Jᴿ-1):-1:1
+    for j = (Jᴿ - 1):-1:1
         # Iterate over productivity today
         for i_z = 1:res.nz
             # Lower bound for policy
@@ -308,6 +308,7 @@ end
 ##############################################################
 ######################## MODEL SOLVER ########################
 ##############################################################
+
 # Functionality to run entire model
 function SolveModel(res::Results, verbose::Bool = false, ρ::Float64 = 0.9, tol::Float64 = 1e-3)
     # Initialize error and counter
