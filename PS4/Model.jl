@@ -22,10 +22,11 @@ mutable struct TransitionResults
     Π₀::Array{Float64}
     e::Array{Float64, 2}
     γ::Float64
-    value_func::Array{Float64}
+    Vₙ::Array{Float64}
+    V₀::Array{Float64}
     policy_func::Array{Float64}
     labor_supply::Array{Float64}
-    F::Array{Float64}
+    Γ::Array{Float64}
     K::Array{Float64}
     L::Array{Float64}
     w::Array{Float64}
@@ -35,56 +36,65 @@ mutable struct TransitionResults
 end
 
 # Initialize transition
-function InitializeTransition(θ₁::Float64, θ₂::Float64, Z::Array{Float64}, γ::Float64, Π::Array{Float64, 2}, Π₀::Array{Float64}, T::Int64, ρ::Float64, verbose::Bool)
+function InitializeTransition(SS¹::Results, SS²::Results, Z::Array{Float64}, γ::Float64, Π::Array{Float64, 2}, Π₀::Array{Float64}, T::Int64, verbose::Bool)
     # Primitives and results from previous problems
     prim = Primitives()
     
-    # Solve model with idiosyncratic uncertainty and social security
-    SS¹ = Initialize(θ₁, Z, γ, Π, Π₀)
-    SolveModel(SS¹, verbose, ρ)
-
-    # Solve model with idiosyncratic uncertainty and no social security
-    SS² = Initialize(θ₂, Z, γ, Π, Π₀)
-    SolveModel(SS², verbose, ρ)
-
-    # Results from previous problems
+    # Vectorize primitives from previous problems
     θ = vcat(SS¹.θ, repeat([SS².θ], T - 1))
-    Z = SS².Z
     nz = length(Z)
-    Π = SS².Π
-    Π₀ = SS².Π₀
-    e = SS².e
-    γ = SS².γ
+    e = prim.η * Z'
 
-    # Initialize results
-    value_func = zeros(prim.N, prim.na, nz, T)
+    # Initialize value functions
+    Vₙ = SS².value_func
+    V₀ = zeros(prim.N, prim.na, nz)
+
+    # Initialize policy functions
     policy_func = zeros(prim.N, prim.na, nz, T)
     labor_supply = zeros(prim.Jᴿ - 1, prim.na, nz, T)
-    F = ones(prim.N, prim.na, nz, T) ./ sum(ones(prim.N, prim.na, nz))
 
-    # Aggregate equilibrium quantities and prices
+    # Initialize distributions
+    Γ = ones(prim.N, prim.na, nz, T) ./ sum(ones(prim.N, prim.na, nz))
+
+    # Vectorize aggregate quantities and prices
     K = collect(range(SS¹.K, SS².K, length = T))
-    L = repeat([SS¹.L], T)
-    w = (1 - α) .* K.^α .* L.^(-α)
-    r = α .* K.^(α - 1) .* L.^(1 - α) .- δ
-    b = θ .* w .* L ./ reshape(sum(F[Jᴿ:N, :, :, :], dims=[1, 2, 3]), T)
+    L = repeat([1.], T)
+    w = (1 - prim.α) .* K.^prim.α .* L.^(-prim.α)
+    r = prim.α .* K.^(prim.α - 1) .* L.^(1 - prim.α) .- prim.δ
+    b = θ .* w .* L ./ reshape(sum(Γ[prim.Jᴿ:prim.N, :, :, :], dims=[1, 2, 3]), T)
 
     # Fill in known values
-    F[:, :, :, 1] = SS¹.F
-    value_func[:, :, :, T] = SS².value_func
+    Γ[:, :, :, 1] = SS¹.F
     policy_func[:, :, :, T] = SS².policy_func
     labor_supply[:, :, :, T] = SS².labor_supply
 
     # Return results
-    TransitionResults(θ, Z, nz, Π, Π₀, e, γ, value_func, policy_func, labor_supply, F, K, L, w, r, b, T)
+    TransitionResults(θ, Z, nz, Π, Π₀, e, γ, Vₙ, V₀, policy_func, labor_supply, Γ, K, L, w, r, b, T)
 end
 
 # Extend results
-function ExtendTransition(res::TransitionResults)
-    # Update values
-    res.T *= 2
-    res.θ = vcat(res.θ, repeat([res.θ[T]], T))
-    res.value_func = vcat(res.value_func, repeat())
+function ExtendTransition(res::TransitionResults, SS¹::Results, SS²::Results, more::Int64)
+    # Primitives and results from previous problems
+    prim = Primitives()
+
+    # Extend functions
+    res.T += more
+    res.θ = vcat(res.θ, repeat([res.θ[res.T - more]], more))
+    res.policy_func = zeros(prim.N, prim.na, res.nz, res.T)
+    res.labor_supply = zeros(prim.Jᴿ - 1, prim.na, res.nz, res.T)
+    res.Γ = ones(prim.N, prim.na, res.nz, res.T) ./ sum(ones(prim.N, prim.na, res.nz))
+
+    # Update aggregate quantities and prices
+    res.K = vcat(res.K, collect(range(res.K[more], SS².K, length = more)))
+    res.L = vcat(res.L, repeat([1.], more))
+    res.w = (1 - prim.α) .* res.K.^α .* res.L.^(-α)
+    res.r = prim.α .* res.K.^(prim.α - 1) .* res.L.^(1 - prim.α) .- prim.δ
+    res.b = res.θ .* res.w .* res.L ./ reshape(sum(res.Γ[prim.Jᴿ:prim.N, :, :, :], dims=[1, 2, 3]), res.T)
+
+    # Fill in known values
+    res.Γ[:, :, :, 1] = SS¹.F
+    res.policy_func[:, :, :, T] = SS².policy_func
+    res.labor_supply[:, :, :, T] = SS².labor_supply
 end
 
 ######################################################
@@ -92,48 +102,44 @@ end
 ######################################################
 
 # Bellman operator for retiree
-function RetireeBellmanTransition(res::TransitionResults)
+function RetireeBellmanTransition(res::TransitionResults, next_value::Array{Float64}, t::Int64)
     # Unpack primitives
     @unpack N, Jᴿ, β, σ, A, na = Primitives()
 
     # Set last value function value
-    res.value_func[N, :, 1, :] = transpose(repeat(RetireeUtility.(A, res.γ, σ)', res.T))
+    res.V₀[N, :, 1] = RetireeUtility.((1 + res.r[t]) .* A .+ res.b[t], res.γ, σ)
 
-    # Backwards induction over time
-    for t = (res.T - 1):-1:1
-        # Backward induction over age
-        for j = (N - 1):-1:Jᴿ
-            # Lower bound for policy
-            lowest_index = 1
+    # Backward induction over age
+    for j = (N - 1):-1:Jᴿ
+        # Lower bound for policy
+        lowest_index = 1
 
-            # Iterate over asset choices today
-            for i_a = 1:na
+        # Iterate over asset choices today
+        for i_a = 1:na
+            # Initialize value, calculate budget
+            budget = (1 + res.r[t]) * A[i_a] + res.b[t]
+            max_util = -Inf
 
-                # Initialize value, calculate budget
-                budget = (1 + res.r[t]) * A[i_a] + res.b[t]
-                max_util = -Inf
+            # Iterate over asset choies tomorrow
+            for i_ap = lowest_index:na
+                # Compute value to retiree
+                v = RetireeUtility(budget - A[i_ap], res.γ, σ) + β * next_value[j + 1, i_ap, 1]
 
-                # Iterate over asset choies tomorrow
-                for i_ap = lowest_index:na
-                    # Compute value to retiree
-                    v = RetireeUtility(budget - A[i_ap], res.γ, σ) + β * res.value_func[j + 1, i_ap, 1, t + 1]
-
-                    # Check decreasing utility or end of grid
-                    if v < max_util
-                        # Update results and break
-                        res.value_func[j, i_a, 1, t] = max_util
-                        res.policy_func[j, i_a, 1, t] = A[i_ap - 1]
-                        lowest_index = i_ap - 1
-                        break
-                    elseif i_ap == na
-                        # Update results
-                        res.value_func[j, i_a, 1, t] = v
-                        res.policy_func[j, i_a, 1, t] = A[i_ap]
-                    end
-
-                    # Update maximum utility
-                    max_util = v
+                # Check decreasing utility or end of grid
+                if v < max_util
+                    # Update results and break
+                    res.V₀[j, i_a, 1] = max_util
+                    res.policy_func[j, i_a, 1, t] = A[i_ap - 1]
+                    lowest_index = i_ap - 1
+                    break
+                elseif i_ap == na
+                    # Update results
+                    res.V₀[j, i_a, 1] = v
+                    res.policy_func[j, i_a, 1, t] = A[i_ap]
                 end
+
+                # Update maximum utility
+                max_util = v
             end
         end
     end
@@ -142,77 +148,58 @@ function RetireeBellmanTransition(res::TransitionResults)
     if res.nz >= 2
         for i_z = 2:res.nz
             # Fill in values for other productivities
-            res.policy_func[:, :, i_z, :] = res.policy_func[:, :, 1, :]
-            res.value_func[:, :, i_z, :] = res.value_func[:, :, 1, :]
+            res.policy_func[:, :, i_z, t] = res.policy_func[:, :, 1, t]
+            res.V₀[:, :, i_z] = res.V₀[:, :, 1]
         end
     end
 end
 
-# Compute labor decision
-function LaborDecision(a::Float64, ap::Float64, e::Float64, θ::Float64, γ::Float64, w::Float64, r::Float64)
-    # Compute labor decision
-    interior = (γ * (1 - θ) * e * w - (1 - γ) * ((1 + r) * a - ap)) / ((1 - θ) * e * w)
-    min(1, max(0, interior))
-end
-
-# Worker utility function
-function WorkerUtility(c::Float64, ℓ::Float64, γ::Float64, σ::Float64)
-    if (c > 0 && ℓ >= 0 && ℓ <= 1)
-        (((c^γ) * ((1 - ℓ)^(1 - γ)))^(1 - σ)) / (1 - σ)
-    else
-        -Inf
-    end
-end
-
 # Bellman operator for worker
-function WorkerBellmanTransition(res::TransitionResults)
+function WorkerBellmanTransition(res::TransitionResults, next_value::Array{Float64}, t::Int64)
     # Unpack primitives
     @unpack Jᴿ, β, σ, A, na = Primitives()
 
-    # Backwards induction over time
-    for t = (res.T - 1):-1:1
-        # Backwards induction over age
-        for j = (Jᴿ - 1):-1:1
-            # Iterate over productivity today
-            for i_z = 1:res.nz
-                # Lower bound for policy
-                lowest_index = 1
+    # Backwards induction over age
+    for j = (Jᴿ - 1):-1:1
+        # Iterate over productivity today
+        for i_z = 1:res.nz
+            # Lower bound for policy
+            lowest_index = 1
 
-                # Iterate over asset choices today
-                for i_a = 1:na
-                    # Initialize value
-                    max_util = -Inf
+            # Iterate over asset choices today
+            for i_a = 1:na
+                # Initialize value
+                max_util = -Inf
 
-                    # Iterate over asset choices tomorrow
-                    for i_ap = lowest_index:na
-                        # Calculate labor decision, consumption, and value
-                        ℓ = LaborDecision(A[i_a], A[i_ap], res.e[j, i_z], res.θ[t], res.γ, res.w[t], res.r[t])
-                        c = res.w[t] * (1 - res.θ[t]) * res.e[j,i_z] * ℓ + (1 + res.r[t]) * A[i_a] - A[i_ap]
-                        v = WorkerUtility(c, ℓ, res.γ, σ)
+                # Iterate over asset choices tomorrow
+                for i_ap = lowest_index:na
+                    # Calculate labor decision, consumption, and value
+                    ℓ = LaborDecision(A[i_a], A[i_ap], res.e[j, i_z], res.θ[t], res.γ, res.w[t], res.r[t])
+                    c = res.w[t] * (1 - res.θ[t]) * res.e[j,i_z] * ℓ + (1 + res.r[t]) * A[i_a] - A[i_ap]
+                    v = WorkerUtility(c, ℓ, res.γ, σ)
 
-                        # Add expected value from tomorrow
-                        for i_zp = 1:res.nz
-                            v += β * res.Π[i_z, i_zp] * res.value_func[j + 1, i_ap, i_zp, t + 1]
-                        end
-
-                        # Check decreasing utility or end of grid
-                        if v < max_util
-                            # Update results and break
-                            res.value_func[j, i_a, i_z, t] = max_util
-                            res.policy_func[j, i_a, i_z, t] = A[i_ap - 1]
-                            res.labor_supply[j, i_a, i_z, t] = LaborDecision(A[i_a], A[i_ap - 1], res.e[j, i_z], res.θ[t], res.γ, res.w[t], res.r[t])
-                            lowest_index = i_ap - 1
-                            break
-                        elseif i_ap == na
-                            # Update results
-                            res.value_func[j, i_a, i_z, t] = v
-                            res.policy_func[j, i_a, i_z, t] = A[i_ap]
-                            res.labor_supply[j, i_a, i_z, t] = ℓ
-                        end
-
-                        # Update maximum value
-                        max_util = v
+                    # Add expected value from tomorrow
+                    for i_zp = 1:res.nz
+                        v += β * res.Π[i_z, i_zp] * next_value[j + 1, i_ap, i_zp]
                     end
+
+                    # Check decreasing utility or end of grid
+                    if v < max_util
+                        # Update results and break
+                        res.V₀[j, i_a, i_z] = max_util
+                        res.policy_func[j, i_a, i_z, t] = A[i_ap - 1]
+                        res.labor_supply[j, i_a, i_z, t] = LaborDecision(A[i_a], A[i_ap - 1], res.e[j, i_z], res.θ[t], res.γ, res.w[t], res.r[t])
+                        lowest_index = i_ap - 1
+                        break
+                    elseif i_ap == na
+                        # Update results
+                        res.V₀[j, i_a, i_z] = v
+                        res.policy_func[j, i_a, i_z, t] = A[i_ap]
+                        res.labor_supply[j, i_a, i_z, t] = ℓ
+                    end
+
+                    # Update maximum value
+                    max_util = v
                 end
             end
         end
@@ -226,9 +213,21 @@ function SolveHHTransition(res::TransitionResults, verbose::Bool = false)
         println("Solving household problem...")
     end
 
-    # Solve retiree and worker problems
-    RetireeBellmanTransition(res)
-    WorkerBellmanTransition(res)
+    # Initialize next value
+    next_value = res.Vₙ
+
+    # Backwards iteration over time
+    for t = (T - 1):-1:1
+        # Solve retiree and worker problems
+        RetireeBellmanTransition(res, next_value, t)
+        WorkerBellmanTransition(res, next_value, t)
+        next_value = res.V₀
+
+        # Print statement
+        if verbose
+            println("Solved for household problem at time = ", t)
+        end
+    end
 
     # Print statement
     if verbose
@@ -241,22 +240,24 @@ end
 ########################################################
 
 # Functionality to solve stationary distribution problem
-function SolveFTransition(res::TransitionResults, verbose::Bool = false)
-    # Unpack primitives, initialize F
+function SolveΓTransition(res::TransitionResults, verbose::Bool = false)
+    # Unpack primitives, initialize Γ
     @unpack N, n, A, na = Primitives()
-    res.F = zeros(N, na, res.nz, res.T)
-    
+
     # Create μ weights
     μ₀ = ones(N)
     for i = 1:(N-1)
         μ₀[i + 1] = μ₀[i] / (1 + n)
     end
 
-    # Normalize μ weights, reshape, add ergodic distribution
+    # Normalize μ weights and apply
     μ = reshape(repeat(μ₀ ./ sum(μ₀), res.nz * na), N, na, res.nz)
-    res.F[:, :, :, 1] = res.F[:, :, :, 1] ./ μ
-    res.F[1, 1, :, :] = res.Π₀
 
+    # Apply weighting and initial conditions
+    res.Γ[:, :, :, 1] = res.Γ[:, :, :, 1] ./ μ
+    res.Γ[:, :, :, 2:res.T] .= 0.
+    res.Γ[1, 1, :, :] .= transpose(res.Π₀)
+    
     # Print statement
     if verbose
         println("Solving distribution problem...")
@@ -269,21 +270,29 @@ function SolveFTransition(res::TransitionResults, verbose::Bool = false)
             # Iterate over state space
             for i_a = 1:na, i_z = 1:res.nz
                 # Skip if no mass
-                if res.F[j, i_a, i_z, t] > 0
+                if res.Γ[j, i_a, i_z, t] > 0
                     # Get index of grid
                     i_ap = argmax(A .== res.policy_func[j, i_a, i_z, t])
                     
                     # Increment probability
                     for i_zp = 1:res.nz
-                        res.F[j + 1, i_ap, i_zp, t + 1] += res.Π[i_z, i_zp] * res.F[j, i_a, i_z, t]
+                        res.Γ[j + 1, i_ap, i_zp, t + 1] += res.Π[i_z, i_zp] * res.Γ[j, i_a, i_z, t]
                     end
                 end
             end
         end
+
+        # Update distribution
+        res.Γ[:, :, :, t] = μ .* res.Γ[:, :, :, t]
+
+        # Print statement
+        if verbose
+            println("Solved for Γ at time = ", t)
+        end
     end
 
-    # Update distribution
-    res.F = μ .* res.F
+    # Update distribution in final state
+    res.Γ[:, :, :, res.T] = μ .* res.Γ[:, :, :, res.T]
 
     # Print statement
     if verbose
@@ -292,9 +301,9 @@ function SolveFTransition(res::TransitionResults, verbose::Bool = false)
     end
 end
 
-##############################################################
-######################## UPDATE PRICES #######################
-##############################################################
+# ##############################################################
+# ######################## UPDATE PRICES #######################
+# ##############################################################
 
 # Update prices
 function UpdatePricesTransition(res::TransitionResults, verbose::Bool = false)
@@ -311,7 +320,7 @@ function UpdatePricesTransition(res::TransitionResults, verbose::Bool = false)
     for t in 1:T
         res.w[t] = (1 - α) * res.K[t]^α * res.L[t]^(-α)
         res.r[t] = α * res.K[t]^(α - 1) * res.L[t]^(1 - α) - δ
-        res.b[t] = res.θ[t] * res.w[t] * res.L[t] / sum(res.F[Jᴿ:N, :, :, t])
+        res.b[t] = res.θ[t] * res.w[t] * res.L[t] / sum(res.Γ[Jᴿ:N, :, :, t])
     end
 
      # Print statement
@@ -320,12 +329,12 @@ function UpdatePricesTransition(res::TransitionResults, verbose::Bool = false)
     end
 end
 
-##############################################################
-######################## MODEL SOLVER ########################
-##############################################################
+# ##############################################################
+# ######################## MODEL SOLVER ########################
+# ##############################################################
 
 # Functionality to run entire model
-function SolveModelTransition(res::TransitionResults, verbose::Bool = false, ρ::Float64 = 0.9, tol::Float64 = 1e-3)
+function SolveModelTransition(res::TransitionResults, SS¹::Results, SS²::Results, verbose::Bool = false, ρ::Float64 = 0.9, tol::Float64 = 1e-3, more::Int64 = 20)
     # Initialize error and counter
     prev_err = Inf
     err = Inf
@@ -346,11 +355,15 @@ function SolveModelTransition(res::TransitionResults, verbose::Bool = false, ρ:
         # Update prices, then solve household and distribution problems
         UpdatePricesTransition(res, verbose)
         SolveHHTransition(res, verbose)
-        SolveFTransition(res, verbose)
+        SolveΓTransition(res, verbose)
 
         # Compute aggregate capital and labor
-        Kⁿᵉʷ = [sum([sum(sum([res.F[j, m, z, t] * A[m] for z = 1:res.nz]) for m = 1:na) for j = 1:N]) for t in 1:res.T]
-        Lⁿᵉʷ = [sum([sum(sum([res.F[j, m, z, t] * res.e[j, z] * res.labor_supply[j, m, z, t] for z = 1:res.nz]) for m = 1:na) for j = 1:(Jᴿ - 1)]) for t in 1:res.T]
+        Kⁿᵉʷ = zeros(res.T)
+        Lⁿᵉʷ = zeros(res.T)
+        for t = 1:T
+            Kⁿᵉʷ[t] = sum([sum(sum([res.Γ[j, m, z, t] * A[m] for z = 1:res.nz]) for m = 1:na) for j = 1:N])
+            Lⁿᵉʷ[t] = sum([sum(sum([res.Γ[j, m, z, t] * res.e[j, z] * res.labor_supply[j, m, z, t] for z = 1:res.nz]) for m = 1:na) for j = 1:(Jᴿ - 1)])
+        end
 
         # Update error term
         err = maximum(abs.(Kⁿᵉʷ - res.K))
@@ -378,7 +391,7 @@ function SolveModelTransition(res::TransitionResults, verbose::Bool = false, ρ:
             end
 
             # Increasing number of periods
-            ExtendTransition(res)
+            ExtendTransition(res, SS¹, SS², more)
 
             # Print statement
             if verbose

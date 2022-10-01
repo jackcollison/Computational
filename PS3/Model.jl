@@ -94,7 +94,7 @@ function RetireeBellman(res::Results)
     @unpack N, Jᴿ, β, σ, A, na = Primitives()
 
     # Set last value function value
-    res.value_func[N, :, 1] = RetireeUtility.(A, res.γ, σ)
+    res.value_func[N, :, 1] = RetireeUtility.((1 + res.r) .* A .+ res.b, res.γ, σ)
 
     # Backward induction
     for j = (N - 1):-1:Jᴿ
