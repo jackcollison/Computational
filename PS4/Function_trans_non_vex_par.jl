@@ -237,8 +237,8 @@ end
         println("=================================================")
         println("Policy Function Solving")
 
-        res.val_func_ret_tran = res.val_ter_ret
-        res.val_func_wor_tran = res.val_ter_wor
+        res.val_func_ret_tran = res.val_ter_ret # Put V_T as the terminal value function to begin the iteration backwards
+        res.val_func_wor_tran = res.val_ter_wor # Put V_T as the terminal value function to begin the iteration backwards
         for t in T:-1:1
             θ = θ * (t <= 1)
             res.b = θ * (1 - α) * res.Ks[t]^α * res.Ls[t]^(1-α) / sum(mu[Jr:N])
@@ -271,7 +271,9 @@ end
             Ls_new[t] = L_new
             Ks_new[t+1] = K_new
         end
-        err = maximum(abs.(Ks_new - Ks_old))
+        errK = maximum(abs.(Ks_new - Ks_old))
+        errL = maximum(abs.(Ls_new - Ls_old))
+        err = errK + errL
         println("Aggregate Error: ", err, " in Iteration ", counter)
         res.Ks = 0.5 .* Ks_new + 0.5 .* Ks_old
         res.Ls = 0.5 .* Ls_new + 0.5 .* Ls_old
