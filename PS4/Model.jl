@@ -239,10 +239,10 @@ end
 ################# DISTRIBUTION PROBLEM #################
 ########################################################
 
-# Functionality to solve stationary distribution problem
-function SolveΓTransition(res::TransitionResults, verbose::Bool = false)
-    # Unpack primitives, initialize Γ
-    @unpack N, n, A, na = Primitives()
+# Function to initialize the distribution
+function InitializeDistribution(res::TransitionResults)
+    # Unpack primitives
+    @unpack N, n = Primitives()
 
     # Create μ weights
     μ₀ = ones(N)
@@ -256,7 +256,19 @@ function SolveΓTransition(res::TransitionResults, verbose::Bool = false)
     # Apply weighting and initial conditions
     res.Γ[:, :, :, 1] = res.Γ[:, :, :, 1] ./ μ
     res.Γ[:, :, :, 2:res.T] .= 0.
-    res.Γ[1, 1, :, :] .= transpose(res.Π₀)
+    res.Γ[1, 1, :, :] .= res.Π₀'
+
+    # Return weights
+    return μ
+end
+
+# Functionality to solve stationary distribution problem
+function SolveΓTransition(res::TransitionResults, verbose::Bool = false)
+    # Unpack primitives, initialize Γ
+    @unpack N, n, A, na = Primitives()
+
+    # Initialize distribution
+    μ = InitializeDistribution(res)
     
     # Print statement
     if verbose
@@ -282,12 +294,12 @@ function SolveΓTransition(res::TransitionResults, verbose::Bool = false)
             end
         end
 
-        # Update distribution
+        # Update distribution with age weights
         res.Γ[:, :, :, t] = μ .* res.Γ[:, :, :, t]
 
         # Print statement
         if verbose
-            println("Solved for Γ at time = ", t)
+            println("Solved for Γ at time = ", t + 1)
         end
     end
 
@@ -333,11 +345,30 @@ end
 # ######################## MODEL SOLVER ########################
 # ##############################################################
 
+# Function to aggregate capital and labor
+function Aggregate(res::TransitionResults)
+    # Upack primitive structure, instantiate value function
+    @unpack N, Jᴿ, A, na = Primitives()
+
+    # Compute aggregate capital and labor
+    Kⁿᵉʷ = zeros(res.T)
+    Lⁿᵉʷ = zeros(res.T)
+    for t = 1:res.T
+        Kⁿᵉʷ[t] = sum([sum(sum([res.Γ[j, m, z, t] * A[m] for z = 1:res.nz]) for m = 1:na) for j = 1:N])
+        Lⁿᵉʷ[t] = sum([sum(sum([res.Γ[j, m, z, t] * res.e[j, z] * res.labor_supply[j, m, z, t] for z = 1:res.nz]) for m = 1:na) for j = 1:(Jᴿ - 1)])
+    end
+
+    # Return values
+    Kⁿᵉʷ, Lⁿᵉʷ
+end
+
 # Functionality to run entire model
-function SolveModelTransition(res::TransitionResults, SS¹::Results, SS²::Results, verbose::Bool = false, ρ::Float64 = 0.9, tol::Float64 = 1e-3, more::Int64 = 20)
+function SolveModelTransition(res::TransitionResults, SS¹::Results, SS²::Results, verbose::Bool = false, ρ::Float64 = 0.5, tol::Float64 = 1e-3, more::Int64 = 20)
+    # Upack primitive structure, instantiate value function
+    @unpack N, Jᴿ, α, δ = Primitives()
+
     # Initialize error and counter
-    prev_err = Inf
-    err = Inf
+    dist = Inf
     i = 0
 
     # Print statement
@@ -347,60 +378,67 @@ function SolveModelTransition(res::TransitionResults, SS¹::Results, SS²::Resul
         println("###############################################\n")
     end
 
-    # Loop while not converged
-    while err > tol
-        # Increment counter
-        i += 1
+    # Loop while not converged to steady state
+    while dist > tol
+        # Initialize error terms
+        err = Inf
 
-        # Update prices, then solve household and distribution problems
-        UpdatePricesTransition(res, verbose)
-        SolveHHTransition(res, verbose)
-        SolveΓTransition(res, verbose)
+        # Loop while capital path is changing
+        while err > tol 
+            # Increment counter
+            i += 1
 
-        # Compute aggregate capital and labor
-        Kⁿᵉʷ = zeros(res.T)
-        Lⁿᵉʷ = zeros(res.T)
-        for t = 1:T
-            Kⁿᵉʷ[t] = sum([sum(sum([res.Γ[j, m, z, t] * A[m] for z = 1:res.nz]) for m = 1:na) for j = 1:N])
-            Lⁿᵉʷ[t] = sum([sum(sum([res.Γ[j, m, z, t] * res.e[j, z] * res.labor_supply[j, m, z, t] for z = 1:res.nz]) for m = 1:na) for j = 1:(Jᴿ - 1)])
+            # Update prices, then solve household and distribution problems
+            UpdatePricesTransition(res, verbose)
+            SolveHHTransition(res, verbose)
+            SolveΓTransition(res, verbose)
+            Kⁿᵉʷ, Lⁿᵉʷ = Aggregate(res)
+
+            # Update error term
+            err = maximum(abs.(Kⁿᵉʷ .- res.K))
+
+            # Print statement
+            if verbose
+                println("GE Iteration = ", i, " with error ε = ", err, "\n")
+            end
+
+            # Continue if tolerance is met
+            if err <= tol
+                continue
+            end
+
+            # Update aggregate capital and labor
+            res.K = (1 - ρ) * res.K + ρ * Kⁿᵉʷ
+            res.L = (1 - ρ) * res.L + ρ * Lⁿᵉʷ
         end
 
-        # Update error term
-        err = maximum(abs.(Kⁿᵉʷ - res.K))
+        # Update distance to steady state
+        dist = abs(res.K[res.T] - SS².K)
 
         # Print statement
         if verbose
-            println("GE Iteration = ", i, " with error ε = ", err, "\n")
+            println("Distance to steady state is ε = ", dist, "\n")
         end
 
-        # Continue if threshold met
-        if err <= tol
+        # Continue if tolerance is met
+        if dist <= tol
             continue
         end
 
-        # Update aggregate capital and labor
-        res.K = (1 - ρ) * res.K + ρ * Kⁿᵉʷ
-        res.L = (1 - ρ) * res.L + ρ * Lⁿᵉʷ
-
-        # Check if periods larger enough
-        if abs(err - prev_err) < tol
-            # Print statement
-            if verbose
-                println("******************************************************************\n")        
-                println("Increasing number of periods...")
-            end
-
-            # Increasing number of periods
-            ExtendTransition(res, SS¹, SS², more)
-
-            # Print statement
-            if verbose
-                println("Increased number of periods!")
-                println("******************************************************************\n")
-            end
+        # Print statement
+        if verbose
+            println("******************************************************************\n")        
+            println("Increasing number of periods...")
         end
 
-        prev_err = err
+        # Increasing number of periods
+        ExtendTransition(res, SS¹, SS², more)
+
+        # Print statement
+        if verbose
+            println("Increased number of periods!")
+            println("******************************************************************\n")
+        end
     end
 
     # Print convergence

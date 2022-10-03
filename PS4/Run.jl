@@ -30,7 +30,7 @@ Z = [3.0 ; 0.5]
 
 # Hyperparameters
 T = 30
-ρ = 0.7
+ρ = 0.5
 verbose = true
 
 # Solve model with idiosyncratic uncertainty and social security
@@ -44,19 +44,24 @@ SS² = Initialize(NSS, Z, γ, Π, Π₀)
 # Solve transition model
 results = InitializeTransition(SS¹, SS², Z, γ, Π, Π₀, T, verbose)
 @time SolveModelTransition(results, SS¹, SS², verbose, ρ)
+# @time UpdatePricesTransition(results, true)
+# @time SolveHHTransition(results, true)
+# @time SolveΓTransition(results, true)
+# @time Kⁿᵉʷ, Lⁿᵉʷ = Aggregate(results)
+# results.K = (1 - ρ) * results.K + ρ * Kⁿᵉʷ
+# results.L = (1 - ρ) * results.L + ρ * Lⁿᵉʷ
 
-# TESTING
 # Check value function
 plot(A, hcat(SS¹.value_func[20, :, :], results.V₀[20, :, :]))
-plot(1:T, results.r)
+plot(1:results.T, results.r)
 
 # Plot capital path
-plot(1:T, results.K, label = "Capital Path", legend = :bottomright)
+plot(1:results.T, results.K, label = "Capital Path", legend = :bottomright)
 hline!([SS¹.K], linestyle=:dash, color = :darkred, label = :none)
 hline!([SS².K], linestyle=:dash, color = :darkred, label = :none)
 
 # Plot labor path
-plot(1:T, results.L, label = "Wage Path", legend = :bottomright)
+plot(1:results.T, results.L, label = "Wage Path", legend = :bottomright)
 hline!([SS¹.L], linestyle=:dash, color = :darkred, label = :none)
 hline!([SS².L], linestyle=:dash, color = :darkred, label = :none)
 
