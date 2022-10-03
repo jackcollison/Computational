@@ -25,6 +25,9 @@ end
     pol_func_wor_tran::Array{Float64, 4} #policy function workers - saving
     lab_func_wor_tran::Array{Float64, 4} #labor supply function workers
 
+    val_ter_ret::Array{Float64, 2} #terminal value retired
+    val_ter_wor::Array{Float64, 3} #terminal value worker
+
     # Prices and aggregates
     r::Float64  #interest rate
     w::Float64  #wage
@@ -56,6 +59,9 @@ end
     val_func_ret_tran = Vret
     val_func_wor_tran = Vwor
 
+    val_ter_ret = Vret
+    val_ter_wor = Vwor
+
     psi_ret_tran = Array{Float64}(ones(prim.length_a_grid, prim.N-prim.Jr+1, prim.T+1) ./ prim.length_a_grid)
     psi_wor_tran = Array{Float64}(ones(prim.length_a_grid, prim.Jr-1, 2, prim.T+1) ./ prim.length_a_grid) #fraction of agents in each age group by state
 
@@ -69,7 +75,7 @@ end
     b::Float64 = 0.2
     Ls::Array{Float64} = ones(prim.T) .* 0.5
     Ks::Array{Float64} = collect(range(K1, K2, length=prim.T+1))
-    res = Results(val_func_ret_tran, pol_func_ret_tran, val_func_wor_tran, pol_func_wor_tran, lab_func_wor_tran, r, w, b, θ, γ, Zs, Ls, Ks, psi_ret_tran, psi_wor_tran) #initialize results struct
+    res = Results(val_func_ret_tran, pol_func_ret_tran, val_func_wor_tran, pol_func_wor_tran, lab_func_wor_tran, val_ter_ret, val_ter_wor, r, w, b, θ, γ, Zs, Ls, Ks, psi_ret_tran, psi_wor_tran) #initialize results struct
     prim, res #return deliverables
 end
 
@@ -229,8 +235,10 @@ end
         Ls_old = res.Ls
         println("Iteration: ", counter)
         println("=================================================")
-        println("Policy Function Solving in period")
+        println("Policy Function Solving")
 
+        res.val_func_ret_tran = res.val_ter_ret
+        res.val_func_wor_tran = res.val_ter_wor
         for t in T:-1:1
             θ = θ * (t <= 1)
             res.b = θ * (1 - α) * res.Ks[t]^α * res.Ls[t]^(1-α) / sum(mu[Jr:N])
@@ -265,8 +273,8 @@ end
         end
         err = maximum(abs.(Ks_new - Ks_old))
         println("Aggregate Error: ", err, " in Iteration ", counter)
-        res.Ks = 0.01 .* Ks_new + 0.99 .* Ks_old
-        res.Ls = 0.01 .* Ls_new + 0.99 .* Ls_old
+        res.Ks = 0.5 .* Ks_new + 0.5 .* Ks_old
+        res.Ls = 0.5 .* Ls_new + 0.5 .* Ls_old
     end
 end
 
