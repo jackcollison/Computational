@@ -16,7 +16,8 @@ JLD2.jldsave("/Users/Yeonggyu/Desktop/Econ 899 - Computation/PS/PS4/CK_trans_rep
 
 ## Problem 2: Get transition dynamics
 # Exit Julia and run again
-include("Function_trans_non_vex.jl")
+#include("Function_trans_non_vex.jl")
+include("Function_trans_non_vex_par.jl")
 JLD2.@load "/Users/Yeonggyu/Desktop/Econ 899 - Computation/PS/PS4/CK_trans_rep.jld2"
 
 V_SS_T_ret = Array(res_no_ss.val_func_ret)
@@ -28,3 +29,4 @@ K_SS_T = res_no_ss.K
 
 prim_tran, res_tran = Initialize(0.11, [3.0; 0.5], 0.42, K_SS_0, K_SS_T, V_SS_T_wor, V_SS_T_ret, Psi_SS_0_wor, Psi_SS_0_ret)
 @time Solve_trans(prim_tran, res_tran)
+JLD2.jldsave("/Users/Yeonggyu/Desktop/Econ 899 - Computation/PS/PS4/CK_trans_path_rep.jld2", prim_tran = prim_tran, res_tran = res_tran)
