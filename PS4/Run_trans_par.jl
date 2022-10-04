@@ -31,6 +31,8 @@ prim_tran, res_tran = Initialize(0.11, [3.0; 0.5], 0.42, K_SS_0, K_SS_T, V_SS_T_
 @time Solve_trans(prim_tran, res_tran)
 JLD2.jldsave("/Users/Yeonggyu/Desktop/Econ 899 - Computation/PS/PS4/CK_trans_path_rep.jld2", prim_tran = prim_tran, res_tran = res_tran)
 
+res_tran.Ks
+
 EV = zeros(prim_tran.N)
 
 for j in 1:prim_tran.N
@@ -44,4 +46,5 @@ for j in 1:prim_tran.N
         end
     end
 end
-Plots.plot(1:prim_tran.N, EV)
+Plots.plot(1:prim_tran.N, EV, xlabel = "Age", legend = false, ylabel = "EV")
+Plots.plot!(1:prim_tran.N, zeros(prim_tran.N), linetypes =:dot)
