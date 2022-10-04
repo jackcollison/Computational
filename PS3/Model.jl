@@ -28,7 +28,7 @@ using Parameters, LinearAlgebra, Printf
     δ::Float64 = 0.06
 
     # Asset global constants
-    A::Array{Float64, 1} = collect(range(0.0, length = 5000, stop = 75.0))
+    A::Array{Float64, 1} = collect(range(0.0, length = 1000, stop = 75.0))
     na::Int64 = length(A)
 end
 
@@ -54,7 +54,7 @@ mutable struct Results
 end
 
 # Initialization function
-function Initialize(θ::Float64, Z::Array{Float64, 1}, γ::Float64, Π::Array{Float64}, Π₀::Array{Float64, 2})
+function Initialize(θ::Float64, Z::Array{Float64, 1}, γ::Float64, Π::Array{Float64}, Π₀::Array{Float64, 2}, K::Float64, L::Float64)
     # Initialize results
     prim = Primitives()
     nz = length(Z)
@@ -65,11 +65,9 @@ function Initialize(θ::Float64, Z::Array{Float64, 1}, γ::Float64, Π::Array{Fl
     F = ones(prim.N, prim.na, nz) / sum(ones(prim.N, prim.na, nz))
 
     # Initial guesses
-    K = 3.3
-    L = 0.3
-    w = 1.05
-    r = 0.05
-    b = 0.2
+    w = (1 - α) * K^α * L^(-α)
+    r = α * K^(α - 1) * L^(1 - α) - δ
+    b = θ * w * L / sum(F[Jᴿ:N, :, :])
 
     # Return structure
     Results(θ, Z, nz, Π, Π₀, e, γ, value_func, policy_func, labor_supply, F, K, L, w, r, b)
@@ -106,7 +104,7 @@ function RetireeBellman(res::Results)
 
             # Initialize value, calculate budget
             budget = (1 + res.r) * A[i_a] + res.b
-            max_util = -Inf
+            max_util = -1e8
 
             # Iterate over asset choies tomorrow
             for i_ap = lowest_index:na
@@ -117,8 +115,8 @@ function RetireeBellman(res::Results)
                 if v < max_util
                     # Update results and break
                     res.value_func[j, i_a, 1] = max_util
-                    res.policy_func[j, i_a, 1] = A[i_ap - 1]
-                    lowest_index = i_ap - 1
+                    res.policy_func[j, i_a, 1] = A[max(i_ap - 1, 1)]
+                    lowest_index = max(i_ap - 1, 1)
                     break
                 elseif i_ap == na
                     # Update results
@@ -173,7 +171,7 @@ function WorkerBellman(res::Results)
             # Iterate over asset choices today
             for i_a = 1:na
                 # Initialize value
-                max_util = -Inf
+                max_util = -1e8
 
                 # Iterate over asset choices tomorrow
                 for i_ap = lowest_index:na
@@ -191,9 +189,9 @@ function WorkerBellman(res::Results)
                     if v < max_util
                         # Update results and break
                         res.value_func[j, i_a, i_z] = max_util
-                        res.policy_func[j, i_a, i_z] = A[i_ap - 1]
-                        res.labor_supply[j, i_a, i_z] = LaborDecision(A[i_a], A[i_ap - 1], res.e[j, i_z], res.θ, res.γ, res.w, res.r)
-                        lowest_index = i_ap - 1
+                        res.policy_func[j, i_a, i_z] = A[max(i_ap - 1, 1)]
+                        res.labor_supply[j, i_a, i_z] = LaborDecision(A[i_a], A[max(i_ap - 1, 1)], res.e[j, i_z], res.θ, res.γ, res.w, res.r)
+                        lowest_index = max(i_ap - 1, 1)
                         break
                     elseif i_ap == na
                         # Update results

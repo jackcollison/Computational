@@ -35,8 +35,12 @@ Zᶜ = [0.5]
 # Verbosity
 verbose = true
 
+# Initial guess for capital and labor
+K = 3.3
+L = 0.3
+
 # Solve household problem with idiosyncratic uncertainty and social security
-results = Initialize(SS, Z, γ, Π, Π₀)
+results = Initialize(SS, Z, γ, Π, Π₀, K, L)
 @time SolveHH(results)
 
 # Plot various functions at various model-ages
@@ -47,31 +51,31 @@ plot(A, results.labor_supply[20, :, :], labels = ["High Type" "Low Type"], title
 plot(A, results.policy_func[20, :, :] .- A, labels = ["High Type" "Low Type"], title = "Savings Decision (Model-Age 20)")
 
 # Solve model with idiosyncratic uncertainty and social security
-results = Initialize(SS, Z, γ, Π, Π₀)
+results = Initialize(SS, Z, γ, Π, Π₀, K, L)
 @time SolveModel(results, verbose, 0.7)
 FormatResults(results)
 
 # Solve model with idiosyncratic uncertainty and no social security
-results = Initialize(NSS, Z, γ, Π, Π₀)
+results = Initialize(NSS, Z, γ, Π, Π₀, K, L)
 @time SolveModel(results, verbose, 0.7)
 FormatResults(results)
 
 # Solve model with social security and no uncertainty
-results = Initialize(SS, Zᶜ, γ, Πᶜ, Π₀ᶜ)
+results = Initialize(SS, Zᶜ, γ, Πᶜ, Π₀ᶜ, K, L)
 @time SolveModel(results, verbose, 0.1)
 FormatResults(results)
 
 # Solve model without social security and no uncertainty
-results = Initialize(NSS, Zᶜ, γ, Πᶜ, Π₀ᶜ)
+results = Initialize(NSS, Zᶜ, γ, Πᶜ, Π₀ᶜ, K, L)
 @time SolveModel(results, verbose, 0.1)
 FormatResults(results)
 
 # Solve model with idiosyncratic uncertainty, social security, and exogenous labor
-results = Initialize(SS, Z, γᶜ, Π, Π₀)
+results = Initialize(SS, Z, γᶜ, Π, Π₀, K, L)
 @time SolveModel(results, verbose, 0.7)
 FormatResults(results)
 
 # Solve model with idiosyncratic uncertainty, no social security, and exogenous labor
-results = Initialize(NSS, Z, γᶜ, Π, Π₀)
+results = Initialize(NSS, Z, γᶜ, Π, Π₀, K, L)
 @time SolveModel(results, verbose, 0.7)
 FormatResults(results)

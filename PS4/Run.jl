@@ -34,26 +34,20 @@ T = 30
 verbose = true
 
 # Solve model with idiosyncratic uncertainty and social security
-SS¹ = Initialize(SS, Z, γ, Π, Π₀)
+K = 3.36
+L = 0.34
+SS¹ = Initialize(SS, Z, γ, Π, Π₀, K, L)
 @time SolveModel(SS¹, verbose, ρ)
 
 # Solve model with idiosyncratic uncertainty and no social security
-SS² = Initialize(NSS, Z, γ, Π, Π₀)
+K = 4.60
+L = 0.37
+SS² = Initialize(NSS, Z, γ, Π, Π₀, K, L)
 @time SolveModel(SS², verbose, ρ)
 
 # Solve transition model
 results = InitializeTransition(SS¹, SS², Z, γ, Π, Π₀, T, verbose)
 @time SolveModelTransition(results, SS¹, SS², verbose, ρ)
-# @time UpdatePricesTransition(results, true)
-# @time SolveHHTransition(results, true)
-# @time SolveΓTransition(results, true)
-# @time Kⁿᵉʷ, Lⁿᵉʷ = Aggregate(results)
-# results.K = (1 - ρ) * results.K + ρ * Kⁿᵉʷ
-# results.L = (1 - ρ) * results.L + ρ * Lⁿᵉʷ
-
-# Check value function
-plot(A, hcat(SS¹.value_func[20, :, :], results.V₀[20, :, :]))
-plot(1:results.T, results.r)
 
 # Plot capital path
 plot(1:results.T, results.K, label = "Capital Path", legend = :bottomright)
@@ -66,11 +60,18 @@ hline!([SS¹.L], linestyle=:dash, color = :darkred, label = :none)
 hline!([SS².L], linestyle=:dash, color = :darkred, label = :none)
 
 # Plot wage path
-plot(1:T, results.w, label = "Wage Path", legend = :bottomright)
+plot(1:results.T, results.w, label = "Wage Path", legend = :bottomright)
 hline!([SS¹.w], linestyle=:dash, color = :darkred, label = :none)
 hline!([SS².w], linestyle=:dash, color = :darkred, label = :none)
 
 # Plot interest rate path
-plot(1:T, results.r, label = "Wage Path", legend = :bottomright)
+plot(1:results.T, results.r, label = "Interest Rate Path", legend = :bottomright)
 hline!([SS¹.r], linestyle=:dash, color = :darkred, label = :none)
 hline!([SS².r], linestyle=:dash, color = :darkred, label = :none)
+
+# Count votes and EV
+ComputeVotes(results, SS¹)
+EV = ComputeEV(results, SS¹)
+
+# Plot EV
+plot(1:N, EV, label = "EV")
