@@ -14,7 +14,6 @@
     Π::Matrix{Float64} = [0.9261 0.0739; 0.0189 0.9811] #transition matrix
     ef::Matrix{Float64} = DelimitedFiles.readdlm("/Users/Yeonggyu/Desktop/Econ 899 - Computation/PS/PS4/ef.txt", '\n')
     mu::Array{Float64} = cumprod([1; ones(N-1)./(1+n)])./sum(cumprod([1; ones(N-1)./(1+n)]))
-    T::Int64 = 30 #transition periods
 end
 
  mutable struct Results
@@ -44,17 +43,19 @@ end
 
     psi_ret_tran::Array{Float64, 3}
     psi_wor_tran::Array{Float64, 4}
+    T::Int64 # total periods
+    NT::Int64 # number of transition periods
 end
 
 #function for initializing model primitives and results
- function Initialize(θ::Float64, Zs::Array{Float64, 1}, γ::Float64, K1::Float64, K2::Float64, Vwor::Array{Float64, 3}, Vret::Array{Float64, 2}, Psiwor::Array{Float64, 3}, Psiret::Array{Float64, 2})
+ function Initialize(θ::Float64, Zs::Array{Float64, 1}, γ::Float64, K1::Float64, K2::Float64, Vwor::Array{Float64, 3}, Vret::Array{Float64, 2}, Psiwor::Array{Float64, 3}, Psiret::Array{Float64, 2}, T::Int64, NT::Int64)
     prim = Primitives() #initialize primtiives
 
     val_func_ret_tran = Array{Float64}(zeros(prim.length_a_grid, prim.N-prim.Jr+1))  #value function retired
-    pol_func_ret_tran = Array{Float64}(zeros(prim.length_a_grid, prim.N-prim.Jr+1, prim.T))  #policy function retired
+    pol_func_ret_tran = Array{Float64}(zeros(prim.length_a_grid, prim.N-prim.Jr+1, T))  #policy function retired
     val_func_wor_tran = Array{Float64}(zeros(prim.length_a_grid, prim.Jr-1, 2)) #value function workers
-    pol_func_wor_tran = Array{Float64}(zeros(prim.length_a_grid, prim.Jr-1, 2, prim.T)) #policy function workers - saving
-    lab_func_wor_tran = Array{Float64}(zeros(prim.length_a_grid, prim.Jr-1, 2, prim.T)) #labor supply function workers
+    pol_func_wor_tran = Array{Float64}(zeros(prim.length_a_grid, prim.Jr-1, 2, T)) #policy function workers - saving
+    lab_func_wor_tran = Array{Float64}(zeros(prim.length_a_grid, prim.Jr-1, 2, T)) #labor supply function workers
 
     val_func_ret_tran = Vret
     val_func_wor_tran = Vwor
@@ -62,8 +63,8 @@ end
     val_ter_ret = Vret
     val_ter_wor = Vwor
 
-    psi_ret_tran = Array{Float64}(ones(prim.length_a_grid, prim.N-prim.Jr+1, prim.T+1) ./ prim.length_a_grid)
-    psi_wor_tran = Array{Float64}(ones(prim.length_a_grid, prim.Jr-1, 2, prim.T+1) ./ prim.length_a_grid) #fraction of agents in each age group by state
+    psi_ret_tran = Array{Float64}(ones(prim.length_a_grid, prim.N-prim.Jr+1, T+1) ./ prim.length_a_grid)
+    psi_wor_tran = Array{Float64}(ones(prim.length_a_grid, prim.Jr-1, 2, T+1) ./ prim.length_a_grid) #fraction of agents in each age group by state
 
     psi_wor_tran[:,:,1,:] = psi_wor_tran[:,:,1,:] .* 0.2037
     psi_wor_tran[:,:,2,:] = psi_wor_tran[:,:,2,:] .* 0.7963
@@ -73,9 +74,9 @@ end
     r::Float64 = 0.05 #interest rate
     w::Float64 = 0.99 #wage
     b::Float64 = 0.2
-    Ls::Array{Float64} = ones(prim.T) .* 0.35
-    Ks::Array{Float64} = collect(range(K1, K2, length=prim.T+1))
-    res = Results(val_func_ret_tran, pol_func_ret_tran, val_func_wor_tran, pol_func_wor_tran, lab_func_wor_tran, val_ter_ret, val_ter_wor, r, w, b, θ, γ, Zs, Ls, Ks, psi_ret_tran, psi_wor_tran) #initialize results struct
+    Ls::Array{Float64} = ones(T) .* 0.35
+    Ks::Array{Float64} = collect(range(K1, K2, length=T+1))
+    res = Results(val_func_ret_tran, pol_func_ret_tran, val_func_wor_tran, pol_func_wor_tran, lab_func_wor_tran, val_ter_ret, val_ter_wor, r, w, b, θ, γ, Zs, Ls, Ks, psi_ret_tran, psi_wor_tran, T, NT) #initialize results struct
     prim, res #return deliverables
 end
 
@@ -114,9 +115,9 @@ end
 end
 
 function Bellman_wor(prim::Primitives, res::Results, t::Int64)
-    @unpack r, w, b, θ, γ, Zs = res #unpack value function
-    @unpack a_grid, β, N, Jr, σ, length_a_grid, Π, ef, T = prim #unpack model primitives
-    θ = θ * ifelse(t == 1, 1, 0)
+    @unpack r, w, b, θ, γ, Zs, T, NT = res #unpack value function
+    @unpack a_grid, β, N, Jr, σ, length_a_grid, Π, ef = prim #unpack model primitives
+    θ = θ * ifelse(t <= T-NT+1, 1, 0)
     next_val = Array{Float64}(zeros(length_a_grid, Jr-1, 2))
 
     for j = 1:2
@@ -178,7 +179,8 @@ function Bellman_wor(prim::Primitives, res::Results, t::Int64)
 end
 
  function get_dist(prim::Primitives, res::Results, t::Int64)
-    @unpack a_grid, length_a_grid, Π, Jr, N, T = prim
+    @unpack a_grid, length_a_grid, Π, Jr, N = prim
+    @unpack T, NT = res
     psi_ret_new = Array{Float64}(zeros(length_a_grid, N-Jr+1))
     psi_wor_new = Array{Float64}(cat(zeros(length_a_grid, Jr-1), zeros(length_a_grid, Jr-1), dims=3))
     psi_wor_new[:,1,:] = res.psi_wor_tran[:,1,:,t]
@@ -218,8 +220,8 @@ end
 end
 
  function get_trans(prim::Primitives, res::Results, tol::Float64=1e-4, err::Float64=100.0)
-    @unpack length_a_grid, T, mu, α, δ, Jr, N, ef = prim
-    @unpack Zs, θ = res
+    @unpack length_a_grid, mu, α, δ, Jr, N, ef = prim
+    @unpack Zs, θ, T, NT = res
     for i in 2:T+1
         res.psi_wor_tran[1,1,1,i] = sum(res.psi_wor_tran[:,1,1,i])
         res.psi_wor_tran[2:length_a_grid,1,1,i] .= 0
@@ -239,7 +241,7 @@ end
         res.val_func_ret_tran = res.val_ter_ret # Put V_T as the terminal value function to begin the iteration backwards
         res.val_func_wor_tran = res.val_ter_wor # Put V_T as the terminal value function to begin the iteration backwards
         for t in T:-1:1
-            res.b = (θ * (1 - α) * res.Ks[t]^α * res.Ls[t]^(1-α) / sum(mu[Jr:N])) * ifelse(t==1, 1, 0)
+            res.b = (θ * (1 - α) * res.Ks[t]^α * res.Ls[t]^(1-α) / sum(mu[Jr:N])) * ifelse(t <= T-NT+1, 1, 0)
             res.r = α * res.Ks[t]^(α-1) * res.Ls[t]^(1-α) - δ
             res.w = (1-α) * res.Ks[t]^α * res.Ls[t]^(-α)
             next_val_ret = Bellman_ret(prim, res, t)
