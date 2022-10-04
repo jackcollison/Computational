@@ -73,7 +73,7 @@ end
     r::Float64 = 0.05 #interest rate
     w::Float64 = 0.99 #wage
     b::Float64 = 0.2
-    Ls::Array{Float64} = ones(prim.T) .* 0.5
+    Ls::Array{Float64} = ones(prim.T) .* 0.35
     Ks::Array{Float64} = collect(range(K1, K2, length=prim.T+1))
     res = Results(val_func_ret_tran, pol_func_ret_tran, val_func_wor_tran, pol_func_wor_tran, lab_func_wor_tran, val_ter_ret, val_ter_wor, r, w, b, θ, γ, Zs, Ls, Ks, psi_ret_tran, psi_wor_tran) #initialize results struct
     prim, res #return deliverables
@@ -84,9 +84,8 @@ end
     @unpack r, γ, b = res #unpack value function
     @unpack a_grid, β, N, Jr, σ, length_a_grid = prim #unpack model primitives
     ctmp_ter = (1+r) * a_grid .+ b
-    res.val_func_ret_tran[:,N-Jr+1] = ctmp_ter.^((1-σ)*γ) ./ (1 - σ)
     next_val = Array{Float64}(zeros(length_a_grid, N-Jr+1))
-    next_val[:,N-Jr+1] = res.val_func_ret_tran[:,N-Jr+1]
+    next_val[:,N-Jr+1] = ctmp_ter.^((1-σ)*γ) ./ (1 - σ)
 
     for j in N-Jr:-1:1 # retirement group iteration
       choice_lower = 1
@@ -114,10 +113,10 @@ end
     next_val
 end
 
- function Bellman_wor(prim::Primitives, res::Results, t::Int64)
+function Bellman_wor(prim::Primitives, res::Results, t::Int64)
     @unpack r, w, b, θ, γ, Zs = res #unpack value function
     @unpack a_grid, β, N, Jr, σ, length_a_grid, Π, ef, T = prim #unpack model primitives
-    θ = θ * (t <= 1)
+    θ = θ * ifelse(t == 1, 1, 0)
     next_val = Array{Float64}(zeros(length_a_grid, Jr-1, 2))
 
     for j = 1:2
@@ -128,7 +127,7 @@ end
            for ip = choice_lower:length_a_grid
              ltmp_wor = min(1, max((γ * (1 - θ) * ef[Jr-1] * Zs[j] * w - (1-γ) * ((1+r) * a - a_grid[ip])) / ((1-θ) * w * ef[Jr-1] * Zs[j]), 0))
              ctmp_wor = w * (1 - θ) * ef[Jr-1] * Zs[j] * ltmp_wor + (1 + r) * a - a_grid[ip]
-             ctmp_wor = ifelse(ctmp_wor > 0, 1, 0)*ctmp_wor
+             ctmp_wor = ifelse(ctmp_wor > 0, 1, 0) * ctmp_wor
              vtmp_wor = (ctmp_wor^γ * (1 -ltmp_wor)^(1-γ))^(1-σ) / (1-σ) + β * res.val_func_ret_tran[ip,1]
 
              if vtmp_wor < val_up
@@ -240,8 +239,7 @@ end
         res.val_func_ret_tran = res.val_ter_ret # Put V_T as the terminal value function to begin the iteration backwards
         res.val_func_wor_tran = res.val_ter_wor # Put V_T as the terminal value function to begin the iteration backwards
         for t in T:-1:1
-            θ = θ * (t <= 1)
-            res.b = θ * (1 - α) * res.Ks[t]^α * res.Ls[t]^(1-α) / sum(mu[Jr:N])
+            res.b = (θ * (1 - α) * res.Ks[t]^α * res.Ls[t]^(1-α) / sum(mu[Jr:N])) * ifelse(t==1, 1, 0)
             res.r = α * res.Ks[t]^(α-1) * res.Ls[t]^(1-α) - δ
             res.w = (1-α) * res.Ks[t]^α * res.Ls[t]^(-α)
             next_val_ret = Bellman_ret(prim, res, t)
@@ -275,8 +273,8 @@ end
         errL = maximum(abs.(Ls_new - Ls_old))
         err = errK + errL
         println("Aggregate Error: ", err, " in Iteration ", counter)
-        res.Ks = 0.5 .* Ks_new + 0.5 .* Ks_old
-        res.Ls = 0.5 .* Ls_new + 0.5 .* Ls_old
+        res.Ks = 0.2 .* Ks_new + 0.8 .* Ks_old
+        res.Ls = 0.2 .* Ls_new + 0.8 .* Ls_old
     end
 end
 
