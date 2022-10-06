@@ -1,7 +1,4 @@
-#using Distributed
-#addprocs(4)
-
-using Parameters, Plots, Printf, JLD2, TableView, DelimitedFiles, SharedArrays
+using Parameters, Plots, Printf, JLD2, TableView, DelimitedFiles
 
 ## Problem 1: Get stationary equlibria
 include("Function_CK_trans_par.jl") #import the functions that solve our growth model
@@ -31,6 +28,11 @@ prim_tran, res_tran = Initialize(0.11, [3.0; 0.5], 0.42, K_SS_0, K_SS_T, V_SS_T_
 @time Solve_trans(prim_tran, res_tran)
 JLD2.jldsave("/Users/Yeonggyu/Desktop/Econ 899 - Computation/PS/PS4/CK_trans_path_rep.jld2", prim_tran = prim_tran, res_tran = res_tran)
 
+Plots.plot(0:30, res_tran.Ks, xlabel = "Period", ylabel = "K", legend = false)
+Plots.plot!(0:30, ones(31) * K_SS_0, linestyle = :dot, label = "")
+Plots.plot!(0:30, ones(31) * K_SS_T, linestyle = :dot, label = "")
+Plots.savefig("/Users/Yeonggyu/Desktop/Econ 899 - Computation/PS/PS4/K Unexpected.png")
+
 EV = zeros(prim_tran.N)
 
 for j in 1:prim_tran.N
@@ -45,15 +47,21 @@ for j in 1:prim_tran.N
     end
 end
 Plots.plot(1:prim_tran.N, EV, xlabel = "Age", legend = false, ylabel = "EV")
-Plots.plot!(1:prim_tran.N, zeros(prim_tran.N), linestyle =:dot, label = "")
+Plots.plot!(1:prim_tran.N, ones(prim_tran.N), linestyle =:dot, label = "")
+Plots.savefig("/Users/Yeonggyu/Desktop/Econ 899 - Computation/PS/PS4/EV Unexpected.png")
 
-## 엄청 나이 많은 사람들은 social security가 없어진 것을 선호하는데, 이건 노동공급 감소 + 자본 증가로 인해 전체적으로 이자율이 오르면서 이들의 소득이 증가하는 현상이 있기 때문이다.
+## EV > 1 => prefer no social security
 
 ## Exercise 2
 
 prim_tran_ff, res_tran_ff = Initialize(0.11, [3.0; 0.5], 0.42, K_SS_0, K_SS_T, V_SS_T_wor, V_SS_T_ret, Psi_SS_0_wor, Psi_SS_0_ret, 50, 30)
 @time Solve_trans(prim_tran_ff, res_tran_ff)
 JLD2.jldsave("/Users/Yeonggyu/Desktop/Econ 899 - Computation/PS/PS4/CK_trans_path_rep_cf.jld2", prim_tran_ff = prim_tran_ff, res_tran_ff = res_tran_ff)
+
+Plots.plot(0:50, res_tran_ff.Ks, xlabel = "Period", ylabel = "K", legend = false)
+Plots.plot!(0:50, ones(51) * K_SS_0, linestyle = :dot, label = "")
+Plots.plot!(0:50, ones(51) * K_SS_T, linestyle = :dot, label = "")
+Plots.savefig("/Users/Yeonggyu/Desktop/Econ 899 - Computation/PS/PS4/K Expected.png")
 
 EV2 = zeros(prim_tran_ff.N)
 
@@ -69,4 +77,5 @@ for j in 1:prim_tran_ff.N
     end
 end
 Plots.plot(1:prim_tran_ff.N, EV2, xlabel = "Age", legend = false, ylabel = "EV")
-Plots.plot!(1:prim_tran_ff.N, zeros(prim_tran_ff.N), linestyle =:dot, label = "")
+Plots.plot!(1:prim_tran_ff.N, ones(prim_tran_ff.N), linestyle =:dot, label = "")
+Plots.savefig("/Users/Yeonggyu/Desktop/Econ 899 - Computation/PS/PS4/EV Expected.png")
