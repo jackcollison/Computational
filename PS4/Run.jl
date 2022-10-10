@@ -47,6 +47,14 @@ SS² = Initialize(NSS, Z, γ, Π, Π₀, K, L)
 
 # Solve transition model
 results = InitializeTransition(SS¹, SS², Z, γ, Π, Π₀, T, verbose)
+
+UpdatePricesTransition(results, verbose)
+SolveHHTransition(results, verbose)
+SolveΓTransition(results, verbose)
+Kⁿᵉʷ, Lⁿᵉʷ = Aggregate(results)
+
+plot(1:T, Kⁿᵉʷ)
+
 @time SolveModelTransition(results, SS¹, SS², verbose, ρ)
 
 # Plot capital path

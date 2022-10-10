@@ -169,7 +169,7 @@ function WorkerBellmanTransition(res::TransitionResults, next_value::Array{Float
             # Iterate over asset choices today
             for i_a = 1:na
                 # Initialize value
-                max_util = -Inf
+                max_util = -1e8
 
                 # Iterate over asset choices tomorrow
                 for i_ap = lowest_index:na
