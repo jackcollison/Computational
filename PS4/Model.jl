@@ -107,6 +107,7 @@ function RetireeBellmanTransition(res::TransitionResults, next_value::Array{Floa
     @unpack N, Jᴿ, β, σ, A, na = Primitives()
 
     # Set last value function value
+    # res.V₀ = zeros(N, na, res.nz)
     res.V₀[N, :, 1] = RetireeUtility.((1 + res.r[t]) .* A .+ res.b[t], res.γ, σ)
 
     # Backward induction over age
@@ -214,14 +215,14 @@ function SolveHHTransition(res::TransitionResults, verbose::Bool = false)
     end
 
     # Initialize next value
-    next_value = res.Vₙ
+    next_value = deepcopy(res.Vₙ)
 
     # Backwards iteration over time
     for t = (res.T - 1):-1:1
         # Solve retiree and worker problems
         RetireeBellmanTransition(res, next_value, t)
         WorkerBellmanTransition(res, next_value, t)
-        next_value = res.V₀
+        next_value = deepcopy(res.V₀)
 
         # Print statement
         if verbose
@@ -395,7 +396,7 @@ function SolveModelTransition(res::TransitionResults, SS¹::Results, SS²::Resul
             Kⁿᵉʷ, Lⁿᵉʷ = Aggregate(res)
 
             # Update error term
-            err = maximum(abs.(Kⁿᵉʷ .- res.K) ./ res.K)
+            err = maximum(abs.(Kⁿᵉʷ .- res.K) ./ res.K) + maximum(abs.(Lⁿᵉʷ .- res.L) ./ res.L)
 
             # Print statement
             if verbose
@@ -413,7 +414,7 @@ function SolveModelTransition(res::TransitionResults, SS¹::Results, SS²::Resul
         end
 
         # Update distance to steady state
-        dist = abs(res.K[res.T] - SS².K) / SS².K
+        dist = abs(res.K[res.T] - SS².K) / SS².K + abs(res.L[res.T] - SS².L) / SS².L
 
         # Print statement
         if verbose
