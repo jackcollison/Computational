@@ -382,5 +382,6 @@ function run_KS(P::Params, G::Grids, S::Shocks, R::Results, err_coef::Float64 = 
             println("Iteration: ", counter, " Coefficient Error: ", err_coef, " Minimum R2: ", minimum(R.R2))
         end
         println("Last Iteration: ", counter, " Converged with Coefficient Error: ", err_coef, " and Maximum R2: ", minimum(R.R2))
+        break
     end
 end
