@@ -40,20 +40,23 @@ function CapitalSimulation(R::Results, sᵢₜ::Array{Float64}, Sₜ::Array{Floa
 
     # Initialize capital
     K_path = vcat(P.Kˢˢ, zeros(P.T - 1))
-    previous_k = repeat(P.Kˢˢ, P.N)
+    previous_k = repeat([P.Kˢˢ], P.N)
     previous_K = P.Kˢˢ
+
+    # Interpolation function
+    p̂ = interpolate(R.policy_func, BSpline(Linear()))
 
     # Iterate over time
     for t = 2:P.T
         # Get index of previous aggregate capital, initialize current individual capital
-        i_K = GetIndex(previous_K, G.K)
+        i_K_previous = GetIndex(previous_K, G.K)
         current_k = zeros(P.N)
 
         # Iterate over individuals
-        for i = 1:P.n
+        for i = 1:P.N
             # Get index of policy functions and update current individual capital
-            i_k = GetIndex(previous_k[i], G.k)
-            current_k[i] = R.policy_func[i_k, sᵢₜ[i, t], i_K, Sₜ[t]]
+            i_k_previous = GetIndex(previous_k[i], G.k)
+            current_k[i] = p̂(i_k_previous, sᵢₜ[i, t - 1], i_K_previous, Sₜ[t - 1])
         end
 
         # Update aggregate capital path
@@ -70,21 +73,16 @@ end
 
 # Generate variables
 function GenerateVariables(Kˢ::Array{Float64})
-    return Kˢ[1:(len(Kˢ) - 1)], Kˢ[2:len(Kˢ)]
+    return [ones(size(Kˢ, 1) - 1) log.(Kˢ[1:(size(Kˢ, 1) - 1)])], log.(Kˢ[2:size(Kˢ, 1)])
 end
 
-# Regression helper for coefficients and R²
+# Regression helper for coefficients
 function CoefficientSolver(Y::Array{Float64}, X::Array{Float64})
-    # Agument X matrix
-    Y = log.(Y)
-    X = hcat(ones(len(Y)), log.(X))
-
-    # Solve for coefficients and return
     return inv(X' * X) * X' * Y
 end
 
 # Regression solver
-function AutoRegression(R::Results, Sₜ::Array{Float64}, K_path::Array{Float64})
+function AutoRegression(Sₜ::Array{Float64}, K_path::Array{Float64})
     # Get primitives
     P = Primitives()
 
@@ -102,11 +100,11 @@ function AutoRegression(R::Results, Sₜ::Array{Float64}, K_path::Array{Float64}
         # Separate state, generate variables, and run regression
         Kˢ = KB[SBₜ .== s]
         Xˢ, Yˢ = GenerateVariables(Kˢ)
-        βˢ = CoefficientSolver(Xˢ, Yˢ)
+        βˢ = reshape(CoefficientSolver(Xˢ, Yˢ), (2, 1))
 
         # Update variables
         SSR += sum((Yˢ - Xˢ * βˢ).^2)
-        SST += sum((Yˢ .- mean(Yˢ).^2))
+        SST += sum((Yˢ .- mean(Yˢ)).^2)
         β = vcat(β, βˢ)
     end
 
@@ -121,7 +119,6 @@ end
 function SolveModel(R::Results, verbose::Bool=false)
     # Get primitives
     P = Primitives()
-    G = Grids()
     S = Shocks()
 
     # Draw shocks, initialize errors, counter
@@ -138,14 +135,14 @@ function SolveModel(R::Results, verbose::Bool=false)
         # Solve household problems, update capital path, and run autoregression
         SolveHousehold(R, verbose)
         K_path = CapitalSimulation(R, sᵢₜ, Sₜ)
-        â₀, â₁, b̂₀, b̂₁, R̂² = AutoRegression(R, Sₜ, K_path)
+        (â₀, â₁, b̂₀, b̂₁), R̂² = AutoRegression(Sₜ, K_path)
 
         # Update error and values
         error = abs(a₀ - â₀) + abs(a₁ - â₁) + abs(b₀ - b̂₀) + abs(b₁ - b̂₁)
-        R.a₀ = P.λ * â₀ + (1 - λ) * a₀
-        R.a₁ = P.λ * â₁ + (1 - λ) * a₁
-        R.b₀ = P.λ * b̂₀ + (1 - λ) * b₀
-        R.b₁ = P.λ * b̂₁ + (1 - λ) * b₁
+        R.a₀ = P.λ * â₀ + (1 - P.λ) * a₀
+        R.a₁ = P.λ * â₁ + (1 - P.λ) * a₁
+        R.b₀ = P.λ * b̂₀ + (1 - P.λ) * b₀
+        R.b₁ = P.λ * b̂₁ + (1 - P.λ) * b₁
         R.R² = R̂²
 
         # Print statement

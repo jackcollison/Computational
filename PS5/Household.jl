@@ -51,7 +51,7 @@ function Bellman(P::Primitives, G::Grids, S::Shocks, R::Results)
             end
 
             # Exponentiate and get index
-            Kp = exp(Kp)
+            Kp = min(max(exp(Kp), K[nK]), K[1])
             i_Kp = GetIndex(Kp, K)
 
             # Iterate over ε shocks
@@ -75,12 +75,10 @@ function Bellman(P::Primitives, G::Grids, S::Shocks, R::Results)
 
                     # Optimize objective and update values
                     opt = optimize(obj, lower, upper)
-                    kp = k̂(opt.minimizer[1])
-                    val = -opt.minimum
 
                     # Update policy and value functions
-                    next_policy_func[i_k, i_ε, i_K, i_z] = kp
-                    next_value_func[i_k, i_ε, i_K, i_z] = val
+                    next_policy_func[i_k, i_ε, i_K, i_z] = k̂(opt.minimizer[1])
+                    next_value_func[i_k, i_ε, i_K, i_z] = -opt.minimum
                 end
             end
         end

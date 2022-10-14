@@ -30,7 +30,7 @@ end
 @with_kw struct Grids
     # Individual capital grid
     nk::Int64 = 21
-    k::Array{Float64,1} = collect(range(0.0, stop = 15.0, length = nk))
+    k::Array{Float64,1} = collect(range(0.0001, stop = 15.0, length = nk))
 
     # Aggregate capital grid
     nK::Int64 = 11
@@ -90,7 +90,7 @@ end
     Mᵇᵍ::Array{Float64,2} = reshape([πᵍᵇ¹¹ πᵍᵇ¹⁰ πᵍᵇ⁰¹ πᵍᵇ⁰⁰], (2, 2))
     Mᵍᵇ::Array{Float64,2} = reshape([πᵇᵍ¹¹ πᵇᵍ¹⁰ πᵇᵍ⁰¹ πᵇᵍ⁰⁰], (2, 2))
     Mᵇᵇ::Array{Float64,2} = reshape([πᵇᵇ¹¹ πᵇᵇ¹⁰ πᵇᵇ⁰¹ πᵇᵇ⁰⁰], (2, 2))
-    M::Array{Float64,2} = reshape([Πᵍᵍ * Mᵍᵍ Πᵍᵇ * Mᵍᵇ Πᵇᵍ * Mᵇᵍ Πᵇᵇ * Mᵇᵇ], (4, 4))
+    M::Array{Float64,2} = [Πᵍᵍ * Mᵍᵍ Πᵇᵍ * Mᵇᵍ ; Πᵍᵇ * Mᵍᵇ Πᵇᵇ * Mᵇᵇ]
 end
 
 # Structure for results
