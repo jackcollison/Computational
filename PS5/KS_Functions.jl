@@ -316,9 +316,11 @@ function run_KS(P::Params, G::Grids, S::Shocks, R::Results, err_coef::Float64 = 
     @unpack N, T, burn, tol_coef, tol_r2, maxit = P
     counter = 0
     Ks = zeros(T)
+
+    idio_state, agg_state = draw_shocks(S, N, T)
+
     while counter < maxit
         while minimum(R.R2) < tol_r2 || err_coef > tol_coef
-            idio_state, agg_state = draw_shocks(S, N, T)
 
             VFI(P, G, S, R) # value function iteration
 
@@ -368,8 +370,8 @@ function run_KS(P::Params, G::Grids, S::Shocks, R::Results, err_coef::Float64 = 
             R.R2[1] = 1 - sum((Yg .- a0_new .- a1_new .* Xg).^2) / sum((Yg .- mean(Yg)).^2)
             R.R2[2] = 1 - sum((Yb .- b0_new .- b1_new .* Xb).^2) / sum((Yb .- mean(Yb)).^2)
 
-            err_coef = max(abs(R.a0-a0_new), abs(R.a1-a1_new), abs(R.b0-b0_new), abs(R.b1-b1_new))
-
+            err_coef = abs(R.a0-a0_new) + abs(R.a1-a1_new) + abs(R.b0-b0_new) + abs(R.b1-b1_new)
+            
             R.a0 = a0_new
             R.a1 = a1_new
             R.b0 = b0_new
