@@ -313,7 +313,7 @@ function VFI(P::Params, G::Grids, S::Shocks, R::Results, err::Float64 = 1000.0)
 end
 
 function run_KS(P::Params, G::Grids, S::Shocks, R::Results, err_coef::Float64 = 100.0)
-    @unpack N, T, burn, tol_coef, tol_r2, maxit = P
+    @unpack N, T, burn, tol_coef, tol_r2, maxit, cLAM = P
     counter = 0
     Ks = zeros(T)
 
@@ -371,11 +371,11 @@ function run_KS(P::Params, G::Grids, S::Shocks, R::Results, err_coef::Float64 = 
             R.R2[2] = 1 - sum((Yb .- b0_new .- b1_new .* Xb).^2) / sum((Yb .- mean(Yb)).^2)
 
             err_coef = abs(R.a0-a0_new) + abs(R.a1-a1_new) + abs(R.b0-b0_new) + abs(R.b1-b1_new)
-            
-            R.a0 = a0_new
-            R.a1 = a1_new
-            R.b0 = b0_new
-            R.b1 = b1_new
+
+            R.a0 = cLAM * a0_new + (1 - cLAM) * R.a0
+            R.a1 = cLAM * a1_new + (1 - cLAM) * R.a1
+            R.b0 = cLAM * b0_new + (1 - cLAM) * R.b0
+            R.b1 = cLAM * b1_new + (1 - cLAM) * R.b1
 
             counter += 1
 
