@@ -22,12 +22,12 @@ using Parameters, Interpolations, Statistics, Random, Distributions, Optim
 end
 
 @with_kw struct Grids
-    k_lb::Float64 = 0.001
-    k_ub::Float64 = 20.0
+    k_lb::Float64 = 0.0001
+    k_ub::Float64 = 15.0
     n_k::Int64 = 21
     k_grid::Array{Float64,1} = range(k_lb, stop = k_ub, length = n_k)
 
-    K_lb::Float64 = 10.0
+    K_lb::Float64 = 11.0
     K_ub::Float64 = 15.0
     n_K::Int64 = 11
     K_grid::Array{Float64,1} = range(K_lb, stop = K_ub, length = n_K)
@@ -324,7 +324,7 @@ function run_KS(P::Params, G::Grids, S::Shocks, R::Results, err_coef::Float64 = 
 
             VFI(P, G, S, R) # value function iteration
 
-            ks_today = ones(N) .* 10.55 # initial values of small k's
+            ks_today = ones(N) .* 11.55 # initial values of small k's
             ks_tomorrow = zeros(N) # store new small k's
 
             k_interp = interpolate(R.pf_k, BSpline(Linear()))
@@ -332,7 +332,7 @@ function run_KS(P::Params, G::Grids, S::Shocks, R::Results, err_coef::Float64 = 
             for t in 1:T # simulate path of aggregate capital
                 if t == 1
                     for n in 1:N
-                        i_K = get_index(10.55, G.K_grid)
+                        i_K = get_index(11.55, G.K_grid)
                         i_k = get_index(ks_today[n], G.k_grid)
 
                         ks_tomorrow[n] = k_interp(i_k, idio_state[n,t], i_K, agg_state[t])
