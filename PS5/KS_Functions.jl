@@ -1,4 +1,4 @@
-using Parameters, Interpolations, Statistics
+using Parameters, Interpolations, Statistics, Random, Distributions, Optim
 
 ## Orginally prepared by Philip Coyle
 ## Modified by Michael Nattinger
@@ -233,10 +233,10 @@ function Bellman(P::Params, G::Grids, S::Shocks, R::Results)
         for (i_K, K_today) in enumerate(K_grid)
             if i_z == 1
                 K_tomorrow = a0 + a1*log(K_today)
-                L_today = 1 - u_g
+                L_today = (1 - u_g) * eps_h
             elseif i_z == 2
                 K_tomorrow = b0 + b1*log(K_today)
-                L_today = 1 - u_b
+                L_today = (1 - u_b) * eps_h
             end
             K_tomorrow = exp(K_tomorrow)
 
@@ -300,12 +300,12 @@ function get_index(val::Float64, grid::Array{Float64,1})
     return index
 end
 
-function VFI(P::Params, G::Grids, S::Shocks, R::Results, err::Float64 = 1000)
+function VFI(P::Params, G::Grids, S::Shocks, R::Results, err::Float64 = 1000.0)
     @unpack tol_vfi = P
 
     while err > tol_vfi
         pf_k_up, pf_v_up = Bellman(P, G, S, R)
-        err = max(abs.(pf_v_up .- R.pf_v))
+        err = maximum(abs.(pf_v_up .- R.pf_v))
 
         R.pf_k = pf_k_up
         R.pf_v = pf_v_up
@@ -317,8 +317,7 @@ function run_KS(P::Params, G::Grids, S::Shocks, R::Results, err_coef::Float64 = 
     counter = 0
     Ks = zeros(T)
     while counter < maxit
-        while min(R.R2) < tol_r2
-            while err_coef > tol_coef
+        while minimum(R.R2) < tol_r2 || err_coef > tol_coef
             idio_state, agg_state = draw_shocks(S, N, T)
 
             VFI(P, G, S, R) # value function iteration
@@ -351,16 +350,14 @@ function run_KS(P::Params, G::Grids, S::Shocks, R::Results, err_coef::Float64 = 
             end
 
             # regression... Julia grammar sucks... will change once I get a better idea how to separate K's into two matrices
-            agg_state_reg = deleteat(agg_state, 1:burn)
-            agg_state_reg = deleteat(agg_state_reg, T-burn)
-            Ks_now = deleteat(Ks, 1:burn)
-            Ks_now = deleteat(Ks_now, T-burn)
-            Ks_next = deleteat(Ks, 1:(burn+1))
+            agg_state_reg = agg_state[(burn+1):(T-1)]
+            Ks_now = Ks[(burn+1):(T-1)]
+            Ks_next = Ks[(burn+2):T]
 
-            Yg = Ks_next[findall(i -> (i == 1), agg_state_reg)]
-            Xg = Ks_now[findall(i -> (i == 1), agg_state_reg)]
-            Yb = Ks[findall(i -> (i == 2), agg_state_reg)]
-            Xb = Ks[findall(i -> (i == 2), agg_state_reg)]
+            Yg = log.(Ks_next[findall(i -> (i == 1), agg_state_reg)])
+            Xg = log.(Ks_now[findall(i -> (i == 1), agg_state_reg)])
+            Yb = log.(Ks_next[findall(i -> (i == 2), agg_state_reg)])
+            Xb = log.(Ks_now[findall(i -> (i == 2), agg_state_reg)])
 
             a1_new = (sum(Xg.*Yg) - mean(Xg) * sum(Yg)) / (sum(Xg.*Xg)- sum(Xg) * mean(Xg))
             a0_new = mean(Yg) - a1_new * mean(Xg)
@@ -368,8 +365,8 @@ function run_KS(P::Params, G::Grids, S::Shocks, R::Results, err_coef::Float64 = 
             b1_new = (sum(Xb.*Yb) - mean(Xb) * sum(Yb)) / (sum(Xb.*Xb)- sum(Xb) * mean(Xb))
             b0_new = mean(Yb) - b1_new * mean(Xb)
 
-            R.R2[1] = sum((Yg .- a0_new .- a1_new .* Xg).^2) / sum((Yg .- mean(Yg)).^2)
-            R.R2[2] = sum((Yb .- b0_new .- b1_new .* Xb).^2) / sum((Yb .- mean(Yb)).^2)
+            R.R2[1] = 1 - sum((Yg .- a0_new .- a1_new .* Xg).^2) / sum((Yg .- mean(Yg)).^2)
+            R.R2[2] = 1 - sum((Yb .- b0_new .- b1_new .* Xb).^2) / sum((Yb .- mean(Yb)).^2)
 
             err_coef = max(abs(R.a0-a0_new), abs(R.a1-a1_new), abs(R.b0-b0_new), abs(R.b1-b1_new))
 
@@ -379,8 +376,9 @@ function run_KS(P::Params, G::Grids, S::Shocks, R::Results, err_coef::Float64 = 
             R.b1 = b1_new
 
             counter += 1
-            end
+
+            println("Iteration: ", counter, " Coefficient Error: ", err_coef, " Minimum R2: ", minimum(R.R2))
         end
-        println("Iteration: ", counter, " Coefficient Error: ", err_coef, " Maximum R2: ", min(R.R2))
+        println("Last Iteration: ", counter, " Converged with Coefficient Error: ", err_coef, " and Maximum R2: ", minimum(R.R2))
     end
 end
