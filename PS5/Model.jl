@@ -12,7 +12,6 @@ include("Household.jl")
 # Initialization of results
 function Initialize()
     # Get primitives
-    P = Primitives()
     G = Grids()
 
     # Value and policy functions
@@ -39,46 +38,53 @@ function CapitalSimulation(R::Results, sᵢₜ::Array{Float64}, Sₜ::Array{Floa
     G = Grids()
 
     # Initialize capital
-    K_path = vcat(P.Kˢˢ, zeros(P.T - 1))
-    previous_k = repeat([P.Kˢˢ], P.N)
-    previous_K = P.Kˢˢ
+    K_path = zeros(P.T)
+    k_today = ones(P.N) .* P.Kˢˢ
+    k_tomorrow = zeros(P.N)
 
     # Interpolation function
     p̂ = interpolate(R.policy_func, BSpline(Linear()))
 
+    # Initial condition
+    i_K = GetIndex(P.Kˢˢ, G.K)
+
+    # Update initial capital paths
+    for i in 1:P.N
+        # Index of steady state
+        i_k = GetIndex(P.Kˢˢ, G.k)
+        k_tomorrow[i] = p̂(i_k, sᵢₜ[i, 1], i_K, Sₜ[1])
+    end
+
+    # Aggregate initial condition
+    K_path[1] = mean(k_tomorrow)
+    k_today = k_tomorrow
+
     # Iterate over time
     for t = 2:P.T
-        # Get index of previous aggregate capital, initialize current individual capital
-        i_K_previous = GetIndex(previous_K, G.K)
-        current_k = zeros(P.N)
+        # Get aggregate capital index
+        i_K = GetIndex(K_path[t - 1], G.K)
 
         # Iterate over individuals
         for i = 1:P.N
-            # Get index of policy functions and update current individual capital
-            i_k_previous = GetIndex(previous_k[i], G.k)
-            current_k[i] = p̂(i_k_previous, sᵢₜ[i, t - 1], i_K_previous, Sₜ[t - 1])
+            # Get index and update
+            i_k = GetIndex(k_today[i], G.k)
+            k_tomorrow[i] = p̂(i_k, sᵢₜ[i, t], i_K, Sₜ[t])
         end
 
-        # Update aggregate capital path
-        K_path[t] = sum(current_k) / P.N
-
-        # Update previous capital
-        previous_k = current_k
-        previous_K = K_path[t]
+        # Update aggregate capital path and capital today
+        K_path[t] = mean(k_tomorrow)
+        k_today = k_tomorrow
     end
 
     # Return value
     return K_path
 end
 
-# Generate variables
-function GenerateVariables(Kˢ::Array{Float64})
-    return [ones(size(Kˢ, 1) - 1) log.(Kˢ[1:(size(Kˢ, 1) - 1)])], log.(Kˢ[2:size(Kˢ, 1)])
-end
-
 # Regression helper for coefficients
 function CoefficientSolver(Y::Array{Float64}, X::Array{Float64})
-    return inv(X' * X) * X' * Y
+    β₁ = (sum(X .* Y) - mean(X) * sum(Y)) / (sum(X .* X) - sum(X) * mean(X))
+    β₀ = mean(Y) - β₁ * mean(X)
+    return β₀, β₁
 end
 
 # Regression solver
@@ -87,8 +93,9 @@ function AutoRegression(Sₜ::Array{Float64}, K_path::Array{Float64})
     P = Primitives()
 
     # Filter for burn in period
-    KB = K_path[(P.B - 1):P.T]
-    SBₜ = Sₜ[(P.B - 1):P.T]
+    X = log.(K_path[P.B:(P.T - 1)])
+    Y = log.(K_path[(P.B + 1):P.T])
+    SBₜ = Sₜ[P.B:(P.T - 1)]
 
     # Instantiate variables
     β = []
@@ -98,14 +105,14 @@ function AutoRegression(Sₜ::Array{Float64}, K_path::Array{Float64})
     # Iterate over aggregate states
     for s = 1:2
         # Separate state, generate variables, and run regression
-        Kˢ = KB[SBₜ .== s]
-        Xˢ, Yˢ = GenerateVariables(Kˢ)
-        βˢ = reshape(CoefficientSolver(Xˢ, Yˢ), (2, 1))
+        Xˢ = X[SBₜ .== s]
+        Yˢ = Y[SBₜ .== s]
+        β̂₀, β̂₁ = CoefficientSolver(Yˢ, Xˢ)
 
         # Update variables
-        SSR += sum((Yˢ - Xˢ * βˢ).^2)
+        SSR += sum((Yˢ .- (β̂₀ .+ β̂₁ .* Xˢ)).^2)
         SST += sum((Yˢ .- mean(Yˢ)).^2)
-        β = vcat(β, βˢ)
+        β = vcat(β, [β̂₀, β̂₁])
     end
 
     # Calculate R²
@@ -146,23 +153,29 @@ function SolveModel(R::Results, verbose::Bool=false)
         R.R² = R̂²
 
         # Print statement
-        if verbose
-            println("****************************************************************************\n")
-            println("Aggregate Iteration = ", i, "\n")
-            println("Coefficient Error   = ", error, "\n")
-            println("Current R²          = ", R.R², "\n")
-            println("****************************************************************************\n")
-        end
+        println("****************************************************************************\n")
+        println("Aggregate Iteration = ", i, "\n")
+        println("Coefficient Error   = ", error, "\n")
+        println("Current R²          = ", R.R², "\n")
+        println("****************************************************************************\n")
     end
 
     # Print statement
-    if verbose && i == P.maxit
-        println("******************************************************************\n")
+    if i == P.maxit
+        println("****************************************************************************\n")
         println("Aggregate problem did not converge within maximum iterations...\n")
-        println("******************************************************************")
-    elseif verbose
-        println("******************************************************************\n")
+        println("****************************************************************************")
+    else
+        println("****************************************************************************\n")
         println("Aggregate problem converged in ", i, " iterations!\n")
-        println("******************************************************************")
+        println("****************************************************************************\n")
     end
+
+    # Print final results
+    println("****************************************************************************\n")
+    println("Results:")
+    println("a₀ = ", round(R.a₀, digits = 3), ", a₁ = ", round(R.a₁, digits = 3))
+    println("b₀ = ", round(R.b₀, digits = 3), ", b₁ = ", round(R.b₁, digits = 3))
+    println("R² = ", round(R.R², digits = 3), "\n")
+    println("****************************************************************************")
 end

@@ -36,7 +36,7 @@ function DrawShocks(S::Shocks, N::Int64, T::Int64)
     @unpack Πᵍᵍ, Πᵇᵇ, Mᵍᵍ, Mᵍᵇ, Mᵇᵍ, Mᵇᵇ = S
 
     # Draw random shock
-    Random.seed!(0)
+    Random.seed!(12032020)
     F = Uniform(0, 1)
 
     # Allocate space for shocks and initialize

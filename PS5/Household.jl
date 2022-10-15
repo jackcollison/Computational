@@ -30,7 +30,7 @@ function Bellman(P::Primitives, G::Grids, S::Shocks, R::Results)
 
     # Iterate over productivity state space
     for (i_z, z) in enumerate(Z)
-        # Get current labor
+        # Check state space
         if i_z == 1
             Lₜ = ε[1] * (1 - uᵍ)
         elseif i_z == 2
@@ -39,19 +39,19 @@ function Bellman(P::Primitives, G::Grids, S::Shocks, R::Results)
 
         # Iterate over aggregate capital state space
         for (i_K, Kₜ) in enumerate(K)
-            # Calculate wages and interest rates
-            w = (1 - α) * z * (Kₜ / Lₜ) ^ α
-            r = α * z * (Kₜ / Lₜ) ^ (α - 1)
-
-            # Check which coefficients to use
+            # Check state space
             if i_z == 1
                 Kp = a₀ + a₁ * log(Kₜ)
             elseif i_z == 2
                 Kp = b₀ + b₁ * log(Kₜ)
             end
 
+            # Calculate wages and interest rates
+            w = (1 - α) * z * (Kₜ / Lₜ) ^ α
+            r = α * z * (Kₜ / Lₜ) ^ (α - 1)
+
             # Exponentiate and get index
-            Kp = min(max(exp(Kp), K[nK]), K[1])
+            Kp = exp(Kp)
             i_Kp = GetIndex(Kp, K)
 
             # Iterate over ε shocks
@@ -89,26 +89,26 @@ function Bellman(P::Primitives, G::Grids, S::Shocks, R::Results)
 end
 
 # Get index for interpolation problem
-function GetIndex(v::Float64, A::Array{Float64,1})
+function GetIndex(val::Float64, grid::Array{Float64,1})
     # Initialize
-    n = length(A)
+    n = length(grid)
     index = 0
 
     # Check conditions
-    if v <= A[1]
+    if val <= grid[1]
         # Lowest index
         index = 1
-    elseif v >= A[n]
+    elseif val >= grid[n]
         # Highest index
         index = n
     else
         # Generate bounds
-        index_upper = findfirst(x-> x > v, A)
+        index_upper = findfirst(x-> x > val, grid)
         index_lower = index_upper - 1
-        val_upper, val_lower = A[index_upper], A[index_lower]
+        val_upper, val_lower = grid[index_upper], grid[index_lower]
 
         # Get midpoint
-        index = index_lower + (v - val_lower) / (val_upper - val_lower)
+        index = index_lower + (val - val_lower) / (val_upper - val_lower)
     end
 
     # Return value
@@ -146,7 +146,7 @@ function SolveHousehold(R::Results, verbose::Bool)
     end
 
     # Print convergence
-    println("******************************************************************\n")
+    println("****************************************************************************\n")
     println("Household problem converged in ", i, " iterations!\n")
-    println("******************************************************************\n")
+    println("****************************************************************************\n")
 end

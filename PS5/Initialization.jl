@@ -30,14 +30,14 @@ end
 @with_kw struct Grids
     # Individual capital grid
     nk::Int64 = 21
-    k::Array{Float64,1} = collect(range(0.0001, stop = 15.0, length = nk))
+    k::Array{Float64,1} = range(0.0001, stop = 15.0, length = nk)
 
     # Aggregate capital grid
     nK::Int64 = 11
-    K::Array{Float64,1} = collect(range(11.0, stop = 15.0, length = nK))
+    K::Array{Float64,1} = range(11.0, stop = 15.0, length = nK)
 
     # Labor productivity grid
-    ε::Array{Float64,1} = [0.3721, 0.0]
+    ε::Array{Float64,1} = [0.3271, 0.0]
     ne::Int64 = size(ε, 1)
 
     # Aggregate technology shock grid
@@ -57,40 +57,40 @@ end
 
     # Transition probabilities for aggregate states
     Πᵍᵍ::Float64 = (dᵍ - 1.0) / dᵍ
-    Πᵍᵇ::Float64 = 1.0 - (dᵇ - 1.0) / dᵇ
-    Πᵇᵍ::Float64 = 1.0 - (dᵍ - 1.0) / dᵍ
+    Πᵍᵇ::Float64 = 1.0 - (dᵍ - 1.0) / dᵍ
+    Πᵇᵍ::Float64 = 1.0 - (dᵇ - 1.0) / dᵇ
     Πᵇᵇ::Float64 = (dᵇ - 1.0) / dᵇ
 
     # Transition probabilities for aggregate states and staying unemployed
     πᵍᵍ⁰⁰::Float64 = (dᵘᵍ - 1.0) / dᵘᵍ
     πᵇᵇ⁰⁰::Float64 = (dᵘᵇ - 1.0) / dᵘᵇ
-    πᵇᵍ⁰⁰::Float64 = 1.25 * πᵇᵇ⁰⁰
-    πᵍᵇ⁰⁰::Float64 = 0.75 * πᵍᵍ⁰⁰
+    πᵍᵇ⁰⁰::Float64 = 1.25 * πᵇᵇ⁰⁰
+    πᵇᵍ⁰⁰::Float64 = 0.75 * πᵍᵍ⁰⁰
 
     # Transition probabilities for aggregate states and becoming employed
-    πᵍᵍ⁰¹::Float64 = (uᵍ - uᵍ * πᵍᵍ⁰⁰) / (1.0 - uᵍ)
-    πᵇᵇ⁰¹::Float64 = (uᵇ - uᵇ * πᵇᵇ⁰⁰) / (1.0 - uᵇ)
-    πᵇᵍ⁰¹::Float64 = (uᵇ - uᵍ * πᵇᵍ⁰⁰) / (1.0 - uᵍ)
-    πᵍᵇ⁰¹::Float64 = (uᵍ - uᵇ * πᵍᵇ⁰⁰) / (1.0 - uᵇ)
+    πᵍᵍ¹⁰::Float64 = (uᵍ - uᵍ * πᵍᵍ⁰⁰) / (1.0 - uᵍ)
+    πᵇᵇ¹⁰::Float64 = (uᵇ - uᵇ * πᵇᵇ⁰⁰) / (1.0 - uᵇ)
+    πᵍᵇ¹⁰::Float64 = (uᵇ - uᵍ * πᵍᵇ⁰⁰) / (1.0 - uᵍ)
+    πᵇᵍ¹⁰::Float64 = (uᵍ - uᵇ * πᵇᵍ⁰⁰) / (1.0 - uᵇ)
 
     # Transition probabilities for aggregate states and becoming unemployed
-    πᵍᵍ¹⁰::Float64 = 1.0 - (dᵘᵍ - 1.0) / dᵘᵍ
-    πᵇᵇ¹⁰::Float64 = 1.0 - (dᵘᵇ - 1.0) / dᵘᵇ
-    πᵇᵍ¹⁰::Float64 = 1.0 - 1.25 * πᵇᵇ⁰⁰
-    πᵍᵇ¹⁰::Float64 = 1.0 - 0.75 * πᵍᵍ⁰⁰
+    πᵍᵍ⁰¹::Float64 = 1.0 - (dᵘᵍ - 1.0) / dᵘᵍ
+    πᵇᵇ⁰¹::Float64 = 1.0 - (dᵘᵇ - 1.0) / dᵘᵇ
+    πᵍᵇ⁰¹::Float64 = 1.0 - 1.25 * πᵇᵇ⁰⁰
+    πᵇᵍ⁰¹::Float64 = 1.0 - 0.75 * πᵍᵍ⁰⁰
 
     # Transition probabilities for aggregate states and staying employed
     πᵍᵍ¹¹::Float64 = 1.0 - (uᵍ - uᵍ * πᵍᵍ⁰⁰) / (1.0 - uᵍ)
     πᵇᵇ¹¹::Float64 = 1.0 - (uᵇ - uᵇ * πᵇᵇ⁰⁰) / (1.0 - uᵇ)
-    πᵇᵍ¹¹::Float64 = 1.0 - (uᵇ - uᵍ * πᵇᵍ⁰⁰) / (1.0 - uᵍ)
-    πᵍᵇ¹¹::Float64 = 1.0 - (uᵍ - uᵇ * πᵍᵇ⁰⁰) / (1.0 - uᵇ)
+    πᵍᵇ¹¹::Float64 = 1.0 - (uᵇ - uᵍ * πᵍᵇ⁰⁰) / (1.0 - uᵍ)
+    πᵇᵍ¹¹::Float64 = 1.0 - (uᵍ - uᵇ * πᵇᵍ⁰⁰) / (1.0 - uᵇ)
 
     # Markov transition matrix
-    Mᵍᵍ::Array{Float64,2} = reshape([πᵍᵍ¹¹ πᵍᵍ¹⁰ πᵍᵍ⁰¹ πᵍᵍ⁰⁰], (2, 2))
-    Mᵇᵍ::Array{Float64,2} = reshape([πᵍᵇ¹¹ πᵍᵇ¹⁰ πᵍᵇ⁰¹ πᵍᵇ⁰⁰], (2, 2))
-    Mᵍᵇ::Array{Float64,2} = reshape([πᵇᵍ¹¹ πᵇᵍ¹⁰ πᵇᵍ⁰¹ πᵇᵍ⁰⁰], (2, 2))
-    Mᵇᵇ::Array{Float64,2} = reshape([πᵇᵇ¹¹ πᵇᵇ¹⁰ πᵇᵇ⁰¹ πᵇᵇ⁰⁰], (2, 2))
-    M::Array{Float64,2} = [Πᵍᵍ * Mᵍᵍ Πᵇᵍ * Mᵇᵍ ; Πᵍᵇ * Mᵍᵇ Πᵇᵇ * Mᵇᵇ]
+    Mᵍᵍ::Array{Float64,2} = reshape([πᵍᵍ¹¹ πᵍᵍ⁰¹ πᵍᵍ¹⁰ πᵍᵍ⁰⁰], (2, 2))
+    Mᵍᵇ::Array{Float64,2} = reshape([πᵍᵇ¹¹ πᵍᵇ⁰¹ πᵍᵇ¹⁰ πᵍᵇ⁰⁰], (2, 2))
+    Mᵇᵍ::Array{Float64,2} = reshape([πᵇᵍ¹¹ πᵇᵍ⁰¹ πᵇᵍ¹⁰ πᵇᵍ⁰⁰], (2, 2))
+    Mᵇᵇ::Array{Float64,2} = reshape([πᵇᵇ¹¹ πᵇᵇ⁰¹ πᵇᵇ¹⁰ πᵇᵇ⁰⁰], (2, 2))
+    M::Array{Float64,2} = [Πᵍᵍ * Mᵍᵍ Πᵍᵇ * Mᵍᵇ ; Πᵇᵍ * Mᵇᵍ Πᵇᵇ * Mᵇᵇ]
 end
 
 # Structure for results

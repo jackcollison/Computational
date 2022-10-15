@@ -11,4 +11,4 @@ include("Model.jl")
 
 # Initialize and run
 results = Initialize()
-SolveModel(results, true)
+SolveModel(results, false)
