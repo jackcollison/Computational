@@ -1,4 +1,4 @@
-using Parameters, Optim, Interpolations, Statistics, Random, Distributions
+using Parameters
 
 @with_kw struct Params
     β::Float64 = 0.8
