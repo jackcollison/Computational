@@ -2,10 +2,6 @@
 # Course: ECON899: Recent Advances in Economics
 # Date: October, 2022
 
-# Author: Jack Collison
-# Course: ECON899: Recent Advances in Economics
-# Date: October, 2022
-
 ########################################################
 #################### HOUSEHOLD PROBLEM #################
 ########################################################

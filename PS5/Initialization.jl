@@ -9,9 +9,9 @@
 # Import required packages
 using Parameters, Random, Distributions
 
-# Structure for results
+# Structure for primitives
 @with_kw struct Primitives 
-    # Value and policy functions
+    # Primitives
     β::Float64 = 0.99
     α::Float64 = 0.36
     δ::Float64 = 0.025
