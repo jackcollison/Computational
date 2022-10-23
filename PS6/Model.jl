@@ -60,16 +60,16 @@ function Initialize(cᶠ::Float64 = 10.0, α::Float64 = -1.0)
     # Firm decisions
     p = 1.0
     N = zeros(ns)
-    π   = zeros(ns)
-    x   = fill(1, ns)
-    W   = zeros(ns)
+    π = zeros(ns)
+    x = fill(1, ns)
+    W = zeros(ns)
 
     # Firm distribution
-    M   = 1.0
-    μ   = ones(ns)
+    M = 1.0
+    μ = ones(ns)
 
     # Equilibrium
-    Π   = 0.0
+    Π = 0.0
     Lᵈ = 0.0
     Lˢ = 0.0
 
@@ -107,8 +107,8 @@ function Bellman(P::Primitives, R::Results)
         else
             # Log-sum-exp calculation
             m = R.α * max(Wˢ, Wᵉ)
-            Wp[i_s] = (γ / R.α) + (1.0 / R.α) * (m + log(exp(R.α * Wˢ - m) + exp(R.α * Wᵉ - m)))
             xp[i_s] = exp(R.α * Wᵉ - m) / (exp.(R.α * Wˢ - m) + exp(R.α * Wᵉ - m))
+            Wp[i_s] = (γ / R.α) + (1.0 / R.α) * (m + log(exp(R.α * Wˢ - m) + exp(R.α * Wᵉ - m)))
         end
     end
 
