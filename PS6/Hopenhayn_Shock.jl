@@ -79,7 +79,7 @@ function StatDist(pars, res, tol_m::Float64 = 1e-4)
 
     while err_m > tol_m
         for i = 1:ns
-            new_dist[i] = sum(Σ[:,1] .* F[:,i] .* res.μ) + sum(Σ[:,1] .* F[:,i] .* ν)
+            new_dist[i] = sum(Σ[:,1] .* F[:,i] .* res.μ) + M * sum(Σ[:,1] .* F[:,i] .* ν)
         end
         err_m = maximum(abs.(res.μ .- new_dist))
         res.μ = new_dist
@@ -93,8 +93,8 @@ function GetAggLabor(pars, res)
     N_star = (1 ./ (θ * p .* S)).^(1/(θ-1))
     Pi_star = p .* S .* N_star.^θ .- N_star .- p * cf
 
-    LD = sum(N_star .* μ) + sum(N_star .* ν)
-    Pi_agg = sum(Pi_star .* μ) + sum(Pi_star .* ν) - M * p * ce
+    LD = sum(N_star .* μ) + M * sum(N_star .* ν)
+    Pi_agg = sum(Pi_star .* μ) + M * sum(Pi_star .* ν) - M * p * ce
     LS = 1/A - Pi_agg
 
     return LD, LS, Pi_agg
@@ -127,5 +127,5 @@ function SolveModel(pars, res, tol_p::Float64 = 1e-4, tol_m::Float64 = 1e-4)
     LD, LS, Pi_agg = GetAggLabor(pars, res)
 
     res.M = 1 / (A *(LD + Pi_agg))
-    StatDist(pars, res)
+    res.μ = res.M .* res.μ
 end
