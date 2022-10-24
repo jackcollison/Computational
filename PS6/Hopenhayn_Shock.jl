@@ -30,7 +30,7 @@ function Initialize(cf::Float64, α::Float64)
     pars = Params()
     μ::Array{Float64, 1} = [0.37, 0.4631, 0.1102, 0.0504, 0.0063]
     p::Float64 = 4.5
-    M::Float64 = 0.03
+    M::Float64 = 1.0
     U::Array{Float64, 1} = ones(pars.ns) .* 0.5772 ./ α
     V::Array{Float64, 2} = zeros(pars.ns, 2)
     Σ::Array{Float64, 2} = ones(pars.ns, 2) .* 0.5

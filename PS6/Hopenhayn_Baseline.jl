@@ -28,7 +28,7 @@ function Initialize(cf::Float64)
     pars = Params()
     μ::Array{Float64, 1} = [0.37, 0.4631, 0.1102, 0.0504, 0.0063]
     p::Float64 = 4.5
-    M::Float64 = 1
+    M::Float64 = 1.0
     W::Array{Float64, 1} = zeros(pars.ns)
     X::Array{Float64, 1} = zeros(pars.ns)
     res = Results(μ, p, M, W, X, cf)
