@@ -11,4 +11,6 @@ PS3: Baseline Conesa-Krueger Economy
 
 PS4: Transition between Steady States in Conesa-Krueger Economy
 
-PS5: Krussell-Smith Method
+PS5: Krussell-Smith Economy
+
+PS6: Hopenhayn-Rogerson Economy
