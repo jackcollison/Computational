@@ -5,7 +5,7 @@ using Parameters
     θ::Float64 = 0.64
     S::Array{Float64, 1} = [3.98*1e-4, 3.58, 6.82, 12.18, 18.79]
     ν::Array{Float64, 1} = [0.37, 0.4631, 0.1102, 0.0504, 0.0063]
-    ns::Float64 = 5
+    ns::Int64 = 5
     ce::Float64 = 5
     F::Array{Float64, 2} = [0.6598 0.2600 0.0416 0.0331 0.0055
                             0.1997 0.7201 0.0420 0.0326 0.0056
@@ -58,7 +58,7 @@ function VFI(pars, res, tol::Float64 = 1e-4)
 
     while err > tol
         W_cand, X_cand = Bellman(pars, res)
-        err = max(W .- W_cand)
+        err = maximum(abs.(res.W .- W_cand))
         res.W = W_cand
         res.X = X_cand
     end
@@ -68,7 +68,7 @@ function EntrantValue(pars, res)
     @unpack ν = pars
     @unpack W = res
 
-    EV = W .* ν
+    EV = sum(W .* ν)
     return EV
 end
 
@@ -83,7 +83,7 @@ function StatDist(pars, res, tol_m::Float64 = 1e-4)
         for i = 1:ns
             new_dist[i] = sum((2 .- X) .* F[:,i] .* μ) + M * sum((2 .- X) .* F[:,i] .* ν)
         end
-        err_m = max(abs.(res.μ - new_dist))
+        err_m = maximum(abs.(res.μ - new_dist))
         res.μ = new_dist
     end
 end
