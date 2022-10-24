@@ -1,16 +1,18 @@
 # Computational
-Repository for code from ECON 899 (Computational)
+Repository for code from ECON 899 (Computational) taught by Dean Corbae and Jean-Francouis Houde
 
 Yeonggyu Yun's Julia codes for Econ 899 (Computational Economics) in Fall 2022
 
 PS1: Value Function Iteration
 
-PS2: Huggett Economy
+PS2: Huggett (JEDC, 1993) Economy
 
-PS3: Baseline Conesa-Krueger Economy
+PS3: Baseline Conesa-Krueger (RED, 1999) Economy
 
-PS4: Transition between Steady States in Conesa-Krueger Economy
+PS4: Transition between Steady States in Conesa-Krueger (RED, 1999) Economy
 
-PS5: Krussell-Smith Economy
+PS5: Krussell-Smith (JPE, 1998) Economy
 
-PS6: Hopenhayn-Rogerson Economy
+PS6: Hopenhayn-Rogerson (JPE, 1993) Economy
+
+PS7: SMM Exercise with AR(1)
