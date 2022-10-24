@@ -40,3 +40,15 @@ using JLD2
 
 JLD2.@load "/Users/Yeonggyu/Desktop/Econ 899 - Computation/PS/PS6/HR_base.jld2"
 JLD2.@load "/Users/Yeonggyu/Desktop/Econ 899 - Computation/PS/PS6/HR_shock.jld2"
+
+res_10.p
+res_shock_10_1.p
+res_shock_10_2.p
+
+sum(res_10.μ)
+sum(res_shock_10_1.μ)
+sum(res_shock_10_2.μ)
+
+res_10.M
+res_shock_10_1.M
+res_shock_10_2.M

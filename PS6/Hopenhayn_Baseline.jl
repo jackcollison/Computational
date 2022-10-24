@@ -105,8 +105,11 @@ end
 function SolveModel(pars, res, tol_p::Float64 = 1e-4, tol_m::Float64 = 1e-4)
     @unpack A, ce = pars
 
+    counter = 0
     err_p = 1000
     while err_p > tol_p
+        counter += 1
+
         p_old = res.p
         VFI(pars, res)
         EV = EntrantValue(pars, res)
@@ -118,11 +121,13 @@ function SolveModel(pars, res, tol_p::Float64 = 1e-4, tol_m::Float64 = 1e-4)
         elseif EV - p_old *ce < -tol_p
             res.p = p_old * 1.01
         end
+        println("Iteration: ", counter, " Error: ", err_p)
+
     end
 
     StatDist(pars, res)
     LD, LS, Pi_agg = GetAggLabor(pars, res)
 
     res.M = 1 / (A *(LD + Pi_agg))
-    StatDist(pars, res)
+    res.μ = res.M .* res.μ
 end
