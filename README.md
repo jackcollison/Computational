@@ -1,6 +1,6 @@
-# Computational
+# Econ 899: Computational Economics
 
-Yeonggyu Yun's repository for code for ECON 899 (Computational) taught by Dean Corbae and Jean-Francois Houde at UW-Madison, Fall 2022
+Yeonggyu Yun's repository for codes for ECON 899 taught by Dean Corbae and Jean-Francois Houde at UW-Madison, Fall 2022
 
 PS1: Value Function Iteration
 
