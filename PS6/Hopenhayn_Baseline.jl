@@ -22,6 +22,9 @@ mutable struct Results
     W::Array{Float64, 1}
     X::Array{Float64, 1}
     cf::Float64
+    NA::Float64
+    NIm::Float64
+    NEn::Float64
 end
 
 function Initialize(cf::Float64)
@@ -31,7 +34,10 @@ function Initialize(cf::Float64)
     M::Float64 = 1.0
     W::Array{Float64, 1} = zeros(pars.ns)
     X::Array{Float64, 1} = zeros(pars.ns)
-    res = Results(μ, p, M, W, X, cf)
+    NA::Float64 = 0.0
+    NIm::Float64 = 0.0
+    NEn::Float64 = 0.0
+    res = Results(μ, p, M, W, X, cf, NA, NIm, NEn)
     pars, res
 end
 
@@ -99,6 +105,10 @@ function GetAggLabor(pars, res)
     Pi_agg = sum(Pi_star .* μ) + M * sum(Pi_star .* ν) - M * p * ce
     LS = 1/A - Pi_agg
 
+    res.NA = LD
+    res.NIm = sum(N_star .* μ)
+    res.NEn = M * sum(N_star .* ν)
+
     return LD, LS, Pi_agg
 end
 
@@ -130,4 +140,6 @@ function SolveModel(pars, res, tol_p::Float64 = 1e-4, tol_m::Float64 = 1e-4)
 
     res.M = 1 / (A *(LD + Pi_agg))
     res.μ = res.M .* res.μ
+
+    GetAggLabor(pars, res)
 end
