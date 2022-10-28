@@ -89,6 +89,67 @@ function NumericalHessian(β::Array{Float64, 1}, X::Matrix{Float64}, Y::Matrix{F
     return H
 end
 
+# Step size function
+function StepSize(f, g, β::Array{Float64}, d::Array{Float64}, θ...; α::Float64=1.0, ftol::Float64=1e-4, gtol::Float64=0.9, xtol::Float64=1e-6, lsmaxit::Int64=1000)
+    # Initialize values
+    β₀ = β
+    fval = -f(β, θ...)
+    gval = -g(β, θ...)
+    ∂ϕ₀ = sum(gval .* d)
+
+    # Check direction
+    if α <= 0 || ∂ϕ₀ > 0
+        # Raise error
+        error("Initialization of step is incorrect.")
+    end
+
+    # Set values
+    c₁ = ftol
+    c₂ = gtol
+    ϕ₀ = -f(β, θ...)
+    αₗ = 0.0
+    αᵣ = Inf
+    k = 0
+
+    # Iterate while error is large
+    while abs(αᵣ - αₗ) > xtol && k < lsmaxit
+        # Update values
+        k += 1
+        β = β₀ + α * d
+        fval = -f(β, θ...)
+
+        # Check Wolfe condition
+        if fval >= ϕ₀ + α * c₁ * ∂ϕ₀
+            # Update values
+            αᵣ = α
+            α = (αᵣ + αₗ) / 2.0
+        else
+            # Update values
+            gval = -g(β, θ...)
+            ∂ϕα = sum(gval .* d)
+
+            # Armijo backtracking conditions
+            if ∂ϕα >= c₂ * ∂ϕ₀
+                # Return value
+                return α
+            else
+                # Update values
+                αₗ = α
+                if isinf(αᵣ)
+                    # Increase α
+                    α = 2.0 * αₗ
+                else
+                    # Split α
+                    α = (αᵣ + αₗ) / 2.0
+                end
+            end
+        end
+    end
+
+    # Return value
+    return α
+end
+
 # Solve with Newton
 function NewtonMethod(f, g, H, β::Array{Float64}, θ...; ε::Float64=1e-12, verbose::Bool=true)
     # Initialize values
@@ -103,7 +164,8 @@ function NewtonMethod(f, g, H, β::Array{Float64}, θ...; ε::Float64=1e-12, ver
         # Take Newton step
         gval = g(β, θ...)
         Hval = H(β, θ...)
-        β₁ = β - inv(Hval) * gval
+        d = -inv(Hval) * gval
+        β₁ = β + α * d
 
         # Update error, coefficients
         error = maximum(abs.(β₁ - β))
@@ -111,7 +173,7 @@ function NewtonMethod(f, g, H, β::Array{Float64}, θ...; ε::Float64=1e-12, ver
 
         # Print statement
         if verbose
-            println("Newton's method is at iteration i = ", i, " with error ε = ", error)
+            println("Newton's method is at iteration i = ", i, " with error ε = ", error, " and step size α = ", α)
         end
     end
 
