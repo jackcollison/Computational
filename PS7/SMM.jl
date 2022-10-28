@@ -1,7 +1,5 @@
 using Parameters, Distributions, Statistics, ShiftedArrays, LinearAlgebra, Optim, Random
 
-Random.seed!(1000)
-
 #### Define necessary functions - notations follow Dean Corbae's problem set for SMM estimation of AR(1)
 
 function gen_true(ρ::Float64 = 0.5, σ::Float64 = 1.0, x0::Float64 = 0.0, T::Int64 = 200)
@@ -143,6 +141,7 @@ end
 #### Problem Set
 
 ## Fix the true data and error terms
+
 xs = gen_true()
 MT = get_MT(xs)
 e_sim = gen_sim()
@@ -150,17 +149,36 @@ e_sim = gen_sim()
 ## SMM using mean and variance as the moments
 
 bhat1_0, STH1 = get_STH(4, [1,2], MT, e_sim, 10, 200)
-bhat1_1, MTHs1 = get_b(2,inv(STH), MT, [1,2], e_sim, 10, 200)
-gbhat1 = get_derivative(bhat1, MTHs1, 10, 200, e_sim, [1,2])
-cov1, std1 = get_cov(STH, gbhat1, 200)
-js1 = jtest(bhat1, inv(STH), MT, 10, 200, [1,2])
+bhat1_1, MTHs1 = get_b(2,inv(STH1), MT, [1,2], e_sim, 10, 200)
+gbhat1 = get_derivative(bhat1_1, MTHs1, 10, 200, e_sim, [1,2])
+cov1, std1 = get_cov(STH1, gbhat1, 200)
+js1 = jtest(bhat1, inv(STH1), MT, 10, 200, [1,2])
 
 ## SMM using variance and autocorrelation
 
 bhat2_0, STH2 = get_STH(4, [2,3], MT, e_sim, 10, 200)
-bhat2_1, MTHs2 = get_b(2,inv(STH), MT, [2,3], e_sim, 10, 200)
-gbhat2 = get_derivative(bhat1, MTHs1, 10, 200, e_sim, [2,3])
-cov2, std2 = get_cov(STH, gbhat1, 200)
-js2 = jtest(bhat1, inv(STH), MT, 10, 200, [2,3])
+bhat2_1, MTHs2 = get_b(2, inv(STH2), MT, [2,3], e_sim, 10, 200)
+gbhat2 = get_derivative(bhat2_1, MTHs1, 10, 200, e_sim, [2,3])
+cov2, std2 = get_cov(STH2, gbhat2, 200)
+js2 = jtest(bhat2, inv(STH2), MT, 10, 200, [2,3])
 
 ## Bootstrap exercise
+
+function get_bs(B::Int64)
+    bhat_bs = zeros(B,2,2)
+
+    for i in 1:B
+        xs = gen_true()
+        MT = get_MT(xs)
+        e_sim = gen_sim()
+
+        bhat_1, STH = get_STH(4, [1,2,3], MT, e_sim, 10, 200)
+        bhat_2, MTHs = get_b(2, inv(STH), MT, [1,2,3], e_sim, 10, 200)
+
+        bhat_bs[i,:,1] = bhat_1
+        bhat_bs[i,:,2] = bhat_2
+    end
+    return bhat_bs
+end
+
+get_bs(10000)
