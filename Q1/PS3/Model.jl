@@ -21,7 +21,7 @@ using Parameters, LinearAlgebra, Printf
     β::Float64 = 0.97
 
     # Productivity global constants
-    η::Array{Float64, 1} = map(x -> parse(Float64, x), readlines("/Users/jackcollison/Desktop/Wisconsin/Coursework/Second Year/Computational/PS3/ef.txt"))
+    η::Array{Float64, 1} = map(x -> parse(Float64, x), readlines("/Users/jackcollison/Desktop/Wisconsin/Coursework/Second Year/Computational/Q1/PS3/ef.txt"))
 
     # Production global constants
     α::Float64 = 0.36

@@ -10,7 +10,7 @@
 using Parameters, LinearAlgebra, Printf
 
 # Include model
-include("/Users/jackcollison/Desktop/Wisconsin/Coursework/Second Year/Computational/PS3/Model.jl")
+include("/Users/jackcollison/Desktop/Wisconsin/Coursework/Second Year/Computational/Q1/PS3/Model.jl")
 
 # Structure for results
 mutable struct TransitionResults 
