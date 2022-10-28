@@ -181,4 +181,4 @@ function get_bs(B::Int64)
     return bhat_bs
 end
 
-get_bs(10000)
+bhat_bs = get_bs(10000)
