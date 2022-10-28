@@ -1,5 +1,5 @@
 # Load libraries
-using LinearAlgebra
+using LinearAlgebra, Printf
 
 # Helper function for Λ estimation
 function Λ(β::Array{Float64}, X::Array{Float64})
@@ -165,6 +165,7 @@ function NewtonMethod(f, g, H, β::Array{Float64}, θ...; ε::Float64=1e-12, ver
         gval = g(β, θ...)
         Hval = H(β, θ...)
         d = -inv(Hval) * gval
+        α = StepSize(f, g, β, d, θ...)
         β₁ = β + α * d
 
         # Update error, coefficients
@@ -173,14 +174,14 @@ function NewtonMethod(f, g, H, β::Array{Float64}, θ...; ε::Float64=1e-12, ver
 
         # Print statement
         if verbose
-            println("Newton's method is at iteration i = ", i, " with error ε = ", error, " and step size α = ", α)
+            @printf "Newton's method is at iteration i = %i with error ε = %.4g and step size α = %.4g\n" i error α
         end
     end
 
     # Print statement
-    println("\n************************************************************************************")
-    println("Newton's method converged in i = ", i, " iterations with error ε = ", error)
-    println("************************************************************************************")
+    println("\n************************************************************************")
+    @printf "Newton's method converged in %i iterations with error ε = %.4g\n" i error
+    println("************************************************************************")
 
     # Return value
     return β, f(β, θ...)
