@@ -1,3 +1,7 @@
+# Author: Jack Collison
+# Course: ECON899: Recent Advances in Economics
+# Date: November, 2022
+
 # Load libraries
 using LinearAlgebra, Printf
 

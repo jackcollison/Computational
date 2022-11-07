@@ -1,3 +1,7 @@
+# Author: Jack Collison
+# Course: ECON899: Recent Advances in Economics
+# Date: November, 2022
+
 # Include libraries
 using DataFrames, StatFiles, Optim
 
@@ -35,6 +39,6 @@ NewtonMethod(LogLikelihood, Score, Hessian, β, X, Y, verbose=true)
 
 # Optimize via Nelder-Mead, LBFGS, and Newton
 results = optimize(β -> -LogLikelihood(β, X, Y), β, NelderMead())
-results = optimize(β -> -LogLikelihood(β, X, Y), g!, β, LBFGS())
+results = optimize(β -> -LogLikelihood(β, X, Y), g!, β, BFGS())
 results = optimize(β -> -LogLikelihood(β, X, Y), g!, h!, β, Newton())
 results = optimize(β -> -LogLikelihood(β, X, Y), Optim.minimizer(results), NelderMead())
