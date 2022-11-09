@@ -3,7 +3,7 @@
 # Date: November, 2022
 
 # Import libraries
-using Distributions, DelimitedFiles
+using Distributions
 
 # Transformations
 function ρ(u::Float64, a::Float64, b::Float64)
@@ -25,9 +25,8 @@ end
 
 # Quadrature method
 function Quadrature(f, w::Array{Float64}, u::Array{Float64}; a::Array{Float64}=nothing, b::Array{Float64}=nothing)
-    # Initialize results
+    # Find dimensions
     dims = size(u, 2)
-    m̄ = 0.0
 
     # Check lower bounds
     if a === nothing
@@ -61,14 +60,4 @@ function Quadrature(f, w::Array{Float64}, u::Array{Float64}; a::Array{Float64}=n
         # Two dimensional case
         return sum(w .* f.(p[:,1], p[:,2]) .* g[:,1] .* g[:,2])
     end
-end
-
-# GHK method
-function GHK()
-    return nothing
-end
-
-# Accept-Reject method
-function AcceptReject()
-    return nothing
 end

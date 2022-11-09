@@ -3,7 +3,7 @@
 # Date: November, 2022
 
 # Import packages
-using Distributions
+using Distributions, DelimitedFiles
 
 # Import utilities
 include("Utilities.jl")
@@ -73,3 +73,33 @@ function QuadratureLikelihood(α₀::Float64, α₁::Float64, α₂::Float64, β
     end
 end
 
+# GHK likelihood
+function GHKLikelihood()
+    return nothing
+end
+
+# Accept-Reject likelihood
+function AcceptRejectLikelihood(α₀::Float64, α₁::Float64, α₂::Float64, β::Float64, γ::Float64, ρ::Float64, T::Float64, X::Array{Float64}, Z::Array{Float64}, ε₀::Array{Float64, 1}, ε₁::Array{Float64, 1}, ε₂::Array{Float64, 1})
+    # Check cases
+    if T == 1.0
+        # Return result for T = 1
+        return mean(α₀ + X' * β + Z[1] * γ .+ ε₀ .< 0)
+    elseif T == 2.0
+        # Return result for T = 2
+        return mean((α₀ + X' * β + Z[1] * γ .- ε₀ .< 0) .* (α₁ + X' * β + Z[2] * γ .+ ε₁ .< 0))
+    elseif T == 3.0
+        # Return result for T = 3
+        return mean((α₀ + X' * β + Z[1] * γ .- ε₀ .< 0) .* (α₁ + X' * β + Z[2] * γ .- ε₁ .> 0) .* (α₂ + X' * β + Z[3] * γ .+ ε₂ .< 0))
+    elseif T == 4.0
+        # Return result for T = 4
+        return mean((α₀ + X' * β + Z[1] * γ .- ε₀ .< 0) .* (α₁ + X' * β + Z[2] * γ .- ε₁ .> 0) .* (α₂ + X' * β + Z[3] * γ .- ε₂ .> 0))
+    else
+        # Return error
+        error("Please enter a valid number for T.")
+    end
+end
+
+# Likelihood switcher
+function Likelihood(α₀::Float64, α₁::Float64, α₂::Float64, β::Float64, γ::Float64, ρ::Float64, T::Float64, X::Array{Float64}, Z::Array{Float64}, N::Int64=100)
+    
+end
