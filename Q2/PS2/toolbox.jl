@@ -1,0 +1,140 @@
+# PS2: Numerical Integration
+# Toolbox for quadrature integration
+using Optim, ProgressMeter, DataFrames, Distributions
+
+# One-dimensional quadrature integration
+function integrate_1d(f, upper_bound, KPU_1d)
+# Define functions to translate the (0, 1) interval into appropriate interval
+    points = log.(KPU_1d[:, :x1]) .+ upper_bound
+    jacobian = 1 ./KPU_1d[:, :x1]
+# sum over grid points
+    return sum(KPU_1d[:, :weight] .* f.(points) .* jacobian)
+end
+
+# Two-dimensional quadrature integration
+function integrate_2d(f, upper_bound_0::Float64, upper_bound_1::Float64, KPU_2d)
+
+    points_0 = log.(KPU_2d[:, :x1]) .+ upper_bound_0
+    jacobian_0 = 1 ./ KPU_2d[:, :x1]
+
+    points_1 = log.(KPU_2d[:, :x2]) .+ upper_bound_1
+    jacobian_1 = 1 ./KPU_2d[:, :x2]
+
+    return sum(KPU_2d[:, :weight] .* f.(points_0, points_1) .* jacobian_0 .* jacobian_1)
+
+end
+
+# Standard normal distribution functions
+# Standard Normal PDF
+function ϕ(x::Float64)
+    1/sqrt(2 * π) * exp((-1/2)*x^2)
+end
+# Standard Normal CDF
+function Φ(x::Float64)
+    return cdf(Normal(0, 1), x)
+end
+# Inverse Standard Normal CDF
+function Φ_inverse(p::Float64)
+    return quantile(Normal(0, 1), p)
+end
+
+# Quadrature integration
+
+# Using quadrature integration
+function likelihood_quadrature(α₀::Float64, α₁::Float64, α₂::Float64,  β::Array{Float64, 1}, γ::Float64, ρ::Float64,
+    t::Float64, x::Array{Float64, 1}, z::Array{Float64, 1}, KPU_1d, KPU_2d)
+
+    result = 0.0
+    σ₀ = 1/(1 - ρ)^2
+
+    if t == 1.0
+        result = Φ((α₀ + x'*β + z[1]*γ)/σ₀)
+    elseif t == 2.0
+        f_2(ε₀) = ϕ(ε₀/σ₀) / σ₀ * (1 - Φ(-α₁ - x'*β - z[2]*γ - ρ * ε₀))
+        result = integrate_1d(f_2, -α₀ - x'*β - z[2]*γ, KPU_1d)
+    elseif t == 3.0
+        f_3(ε₀, ε₁) = ϕ(ε₀/σ₀) / σ₀ * ϕ(ε₁ - ρ*ε₀) * (1 - Φ(-α₂ - x'*β - z[3]*γ - ρ*ε₁))
+        result = integrate_2d(f_3, -α₀ - x'*β - z[3]*γ, -α₁ - x'*β - z[3]*γ, KPU_2d)
+    elseif t == 4.0
+        f_4(ε₀, ε₁) = ϕ(ε₀/σ₀) / σ₀ * ϕ(ε₁ - ρ*ε₀) * Φ(-α₂ - x'*β - z[3]*γ - ρ*ε₁)
+        result = integrate_2d(f_4, -α₀ - x'*β - z[3]*γ, -α₁ - x'*β - z[3]*γ, KPU_2d)
+    else
+        error("Invalid value of t.")
+    end
+
+    return result
+end
+
+
+# GHK
+
+# using ghk simulation
+function likelihood_ghk(α₀::Float64, α₁::Float64, α₂::Float64,  β::Array{Float64, 1}, γ::Float64, ρ::Float64,
+    t::Float64, x::Array{Float64, 1}, z::Array{Float64, 1}, u₀::Array{Float64, 1}, u₁::Array{Float64, 1}, u₂::Array{Float64, 1})
+
+    n_trials = length(u₀)
+    σ₀ = 1/(1 - ρ)^2
+
+    truncation₀ = Φ((-α₀ - x'*β - z[1]*γ)/σ₀) # evaluates truncation point for first shock probability
+
+    if t == 1.0
+
+        return 1 - truncation₀
+
+    else # if t = 2.0 or 3.0 or 4.0
+
+        pr₀ = u₀ * truncation₀ # scales uniform rv between zero and the truncation point.
+        η₀ = Φ_inverse.(pr₀)
+        ε₀ = η₀ .* σ₀
+
+        truncation₁ = Φ.(-α₁ .- x'*β .- z[2]*γ .- ρ.*ε₀) # initializes simulation-specific truncation points
+
+        if t == 2.0
+
+            return sum(truncation₀ .* (1 .- truncation₁))/n_trials
+
+        else # if t = 3.0 or 4.0
+
+            pr₁ = u₁ .* truncation₁ # scales uniform rv between zero and the truncation point.
+            η₁ = Φ_inverse.(pr₁) # initializes first shocks
+            ε₁ = ρ .* ε₀ .+ η₁
+
+            truncation₂ = Φ.(-α₂ .- x'*β .- z[3]*γ .- ρ.*ε₁)
+
+            if t == 3.0
+
+                return sum(truncation₀ .* truncation₁ .* (1 .- truncation₂))/n_trials
+
+            else # t = 4.0
+
+                return sum(truncation₀ .* truncation₁ .* truncation₂)/n_trials
+
+            end
+        end
+    end
+end
+
+# Accept-Reject
+
+function likelihood_accept_reject(α₀::Float64, α₁::Float64, α₂::Float64,  β::Array{Float64, 1}, γ::Float64, ρ::Float64,
+    t::Float64, x::Array{Float64, 1}, z::Array{Float64, 1}, ε₀::Array{Float64, 1}, ε₁::Array{Float64, 1}, ε₂::Array{Float64, 1})
+
+    # initialize count variable
+    count = 0
+
+    # based on the value of t counts the number of accepted simulations
+    if t == 1.0
+        count = sum( α₀ + x'*β + z[1]*γ .+ ε₀ .> 0)
+    elseif t == 2.0
+        count = sum((α₀ + x'*β + z[1]*γ .+ ε₀ .< 0) .* (α₁ + x'*β + z[2]*γ .+ ε₁ .> 0))
+    elseif t == 3.0
+        count = sum((α₀ + x'*β + z[1]*γ .+ ε₀ .< 0) .* (α₁ + x'*β + z[2]*γ .+ ε₁ .< 0) .* (α₂ + x'*β + z[3]*γ .+ ε₂ .> 0))
+    elseif t == 4.0
+        count = sum((α₀ + x'*β + z[1]*γ .+ ε₀ .< 0) .* (α₁ + x'*β + z[2]*γ .+ ε₁ .< 0) .* (α₂ + x'*β + z[3]*γ .+ ε₂ .< 0))
+    else
+        error("Invalid value of t.")
+    end
+
+    # returns the frequency of the accepted simulations
+    return count/length(ε₀)
+end
