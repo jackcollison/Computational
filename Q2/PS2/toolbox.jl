@@ -83,7 +83,7 @@ function likelihood_ghk(α₀::Float64, α₁::Float64, α₂::Float64,  β::Arr
 
     else # if t = 2.0 or 3.0 or 4.0
 
-        pr₀ = u₀ * truncation₀ # scales uniform rv between zero and the truncation point.
+        pr₀ = u₀ * (1 .- truncation₀) # scales uniform rv between zero and the truncation point.
         η₀ = Φ_inverse.(pr₀)
         ε₀ = η₀ .* σ₀
 
@@ -91,11 +91,11 @@ function likelihood_ghk(α₀::Float64, α₁::Float64, α₂::Float64,  β::Arr
 
         if t == 2.0
 
-            return sum(truncation₀ .* (1 .- truncation₁)) / n_trials
+            return sum((1 .- truncation₀) .* truncation₁) / n_trials
 
         else # if t = 3.0 or 4.0
 
-            pr₁ = u₁ .* truncation₁ # scales uniform rv between zero and the truncation point.
+            pr₁ = u₁ .* (1 .- truncation₁) # scales uniform rv between zero and the truncation point.
             η₁ = Φ_inverse.(pr₁) # initializes first shocks
             ε₁ = ρ .* ε₀ .+ η₁
 
@@ -103,11 +103,11 @@ function likelihood_ghk(α₀::Float64, α₁::Float64, α₂::Float64,  β::Arr
 
             if t == 3.0
 
-                return sum(truncation₀ .* truncation₁ .* (1 .- truncation₂)) / n_trials
+                return sum((1 .- truncation₀) .* (1 .- truncation₁) .* truncation₂) / n_trials
 
             else # t = 4.0
 
-                return sum(truncation₀ .* truncation₁ .* truncation₂) / n_trials
+                return sum((1 .- truncation₀) .* (1 .- truncation₁) .* (1 .- truncation₂)) / n_trials
 
             end
         end
