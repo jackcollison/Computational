@@ -69,46 +69,34 @@ end
 # GHK
 
 # using ghk simulation
-function likelihood_ghk(α₀::Float64, α₁::Float64, α₂::Float64,  β::Array{Float64, 1}, γ::Float64, ρ::Float64,
-    t::Float64, x::Array{Float64, 1}, z::Array{Float64, 1}, u₀::Array{Float64, 1}, u₁::Array{Float64, 1}, u₂::Array{Float64, 1})
-
+function likelihood_ghk(α₀::Float64, α₁::Float64, α₂::Float64,  β::Array{Float64, 1}, γ::Float64, ρ::Float64,t::Float64, x::Array{Float64, 1}, z::Array{Float64, 1}, u₀::Array{Float64, 1}, u₁::Array{Float64, 1}, u₂::Array{Float64, 1})
     n_trials = length(u₀)
     σ₀ = 1/(1 - ρ)
-
     truncation₀ = Φ((-α₀ - x'*β - z[1]*γ) / σ₀) # evaluates truncation point for first shock probability
 
     if t == 1.0
-
         return truncation₀
-
     else # if t = 2.0 or 3.0 or 4.0
-
-        pr₀ = u₀ * (1 .- truncation₀) # scales uniform rv between zero and the truncation point.
+        pr₀ = truncation₀ .+ u₀ * (1 .- truncation₀) # scales uniform rv between zero and the truncation point.
         η₀ = Φ_inverse.(pr₀)
         ε₀ = η₀ .* σ₀
 
         truncation₁ = Φ.(-α₁ .- x'*β .- z[2]*γ .- ρ.*ε₀) # initializes simulation-specific truncation points
 
         if t == 2.0
-
             return sum((1 .- truncation₀) .* truncation₁) / n_trials
 
         else # if t = 3.0 or 4.0
-
-            pr₁ = u₁ .* (1 .- truncation₁) # scales uniform rv between zero and the truncation point.
+            pr₁ = truncation₁ .+ u₁ .* (1 .- truncation₁) # scales uniform rv between zero and the truncation point.
             η₁ = Φ_inverse.(pr₁) # initializes first shocks
             ε₁ = ρ .* ε₀ .+ η₁
 
             truncation₂ = Φ.(-α₂ .- x'*β .- z[3]*γ .- ρ.*ε₁)
 
             if t == 3.0
-
                 return sum((1 .- truncation₀) .* (1 .- truncation₁) .* truncation₂) / n_trials
-
             else # t = 4.0
-
                 return sum((1 .- truncation₀) .* (1 .- truncation₁) .* (1 .- truncation₂)) / n_trials
-
             end
         end
     end
