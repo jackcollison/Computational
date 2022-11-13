@@ -68,7 +68,7 @@ histogram!(L4)
 # Accept-Reject 
 @elapsed ARL = likelihood(α₀, α₁, α₂, β, γ, ρ, t, x, z, Q[1], Q[2], u₀, u₁, u₂, ε₀, ε₁, ε₂; method = "accept_reject")
 
-# Plot GHK likelihood
+# Plot Accept-Reject likelihood
 L1 = [ARL[i] for i = 1:size(ARL,1) if t[i] == 1]
 L2 = [ARL[i] for i = 1:size(ARL,1) if t[i] == 2]
 L3 = [ARL[i] for i = 1:size(ARL,1) if t[i] == 3]
@@ -82,3 +82,4 @@ histogram!(L4)
 θ = vcat(α₀, α₁, α₂, β, γ, ρ)
 log_likelihood(θ, t, x, z, Q[1], Q[2], u₀, u₁, u₂, ε₀, ε₁, ε₂, method="quadrature")
 @time θ̂ = optimize(θ -> log_likelihood(θ, t, x, z, Q[1], Q[2], u₀, u₁, u₂, ε₀, ε₁, ε₂, method="quadrature"), θ, LBFGS())
+# Optimization doesn't converge... goes to infinity

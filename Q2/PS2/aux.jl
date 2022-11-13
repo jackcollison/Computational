@@ -98,7 +98,6 @@ function likelihood(α₀::Float64, α₁::Float64, α₂::Float64,  β::Array{F
 
     N = size(x)[1]
 
-    # uses distributed for loop; on a test with quadrature, this took about 2 minutes for the dataset
     result = zeros(N)
 
     if method == "quadrature"
@@ -141,7 +140,7 @@ function log_likelihood(θ::Array{Float64, 1}, t::Array{Float64, 2}, x::Array{Fl
     γ   = θ[K_x+4]
     ρ   = θ[K_x+5]
 
-    ll = sum(log.(likelihood(α₀, α₁, α₂, β, γ, ρ, t, x, z, KPU_1d, KPU_2d, u₀, u₁, u₂, ε₀, ε₁, ε₂; method = method)))
+    ll = -sum(log.(likelihood(α₀, α₁, α₂, β, γ, ρ, t, x, z, KPU_1d, KPU_2d, u₀, u₁, u₂, ε₀, ε₁, ε₂; method = method)))
 
     println("Log-likelihood = ", ll)
 

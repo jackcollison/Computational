@@ -109,20 +109,37 @@ function likelihood_accept_reject(α₀::Float64, α₁::Float64, α₂::Float64
 
     # initialize count variable
     count = 0
+    σ₀ = 1/(1 - ρ)
+    b₀ = -α₀ - x'*β - z[1]*γ
+    b₁ = -α₁ - x'*β - z[2]*γ
+    b₂ = -α₂ - x'*β - z[3]*γ 
+    a₀ = (ε₀ .> b₀)
+    a₁ = (ε₁ .> b₁)
+    a₂ = a₀ .* a₁
 
     # based on the value of t counts the number of accepted simulations
     if t == 1.0
-        count = sum(α₀ + x'*β + z[1]*γ .+ ε₀ .< 0)
+        # count = sum(α₀ + x'*β + z[1]*γ .+ ε₀ .< 0)
+        count = sum(Φ.(b₀ / σ₀))
     elseif t == 2.0
-        count = sum((α₀ + x'*β + z[1]*γ .+ ε₀ .>= 0) .* (α₁ + x'*β + z[2]*γ .+ ε₁ .< 0))
+        # count = sum((α₀ + x'*β + z[1]*γ .+ ε₀ .>= 0) .* (α₁ + x'*β + z[2]*γ .+ ε₁ .< 0))
+        if length((a₀ .== 1)) > 0
+            count = sum(a₀ .* Φ.(b₁ .- ε₁)) / length((a₀ .== 1))
+        end
     elseif t == 3.0
-        count = sum((α₀ + x'*β + z[1]*γ .+ ε₀ .>= 0) .* (α₁ + x'*β + z[2]*γ .+ ε₁ .>= 0) .* (α₂ + x'*β + z[3]*γ .+ ε₂ .< 0))
+        # count = sum((α₀ + x'*β + z[1]*γ .+ ε₀ .>= 0) .* (α₁ + x'*β + z[2]*γ .+ ε₁ .>= 0) .* (α₂ + x'*β + z[3]*γ .+ ε₂ .< 0))
+        if length((a₂ .== 1)) > 0
+            count = sum(a₂ .* Φ.(b₂ .- ε₂)) / length((a₂ .== 1))
+        end
     elseif t == 4.0
-        count = sum((α₀ + x'*β + z[1]*γ .+ ε₀ .>= 0) .* (α₁ + x'*β + z[2]*γ .+ ε₁ .>= 0) .* (α₂ + x'*β + z[3]*γ .+ ε₂ .>= 0))
+        # count = sum((α₀ + x'*β + z[1]*γ .+ ε₀ .>= 0) .* (α₁ + x'*β + z[2]*γ .+ ε₁ .>= 0) .* (α₂ + x'*β + z[3]*γ .+ ε₂ .>= 0))
+         if length((a₂ .== 1)) > 0
+            count = sum(a₂ .* (1 .- Φ.(b₂ .- ε₂))) / length((a₂ .== 1))
+         end
     else
         error("Invalid value of t.")
     end
 
     # returns the frequency of the accepted simulations
-    return count/length(ε₀)
+    return count # / length(ε₀)
 end
