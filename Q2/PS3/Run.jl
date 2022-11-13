@@ -55,7 +55,7 @@ S₁ = zeros(length(λ))
 # Search over grid for first stage λ
 for i = 1:length(λ)
     # Compute value
-    S₁[i] = gmm(chars, markets, Z, sims, λ[i], W)
+    S₁[i] = gmm(chars, markets, Z, sims, [λ[i]], W)
 end
 
 # Extract minimum value
@@ -76,7 +76,7 @@ S₂ = zeros(length(λ))
 # Search over grid for second stage λ
 for i = 1:length(λ)
     # Compute value
-    S₂[i] = gmm(chars, markets, Z, sims, λ[i], W)
+    S₂[i] = gmm(chars, markets, Z, sims, [λ[i]], W)
 end
 
 # Optimization
@@ -87,4 +87,3 @@ plot(λ, S₂, label = "Second-Stage Value");
 scatter!([λ̂₂.minimizer], [λ̂₂.minimum], label = "Second-Stage Estimate");
 xlabel!("λₚ")
 ylabel!("GMM Objective")
-savefig("second_stage.png")

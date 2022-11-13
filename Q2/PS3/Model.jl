@@ -42,17 +42,17 @@ function contraction_mapping_market(data::DataFrame, market::Float64, markets::V
         i += 1
 
         # Compute choice probabilities
-        pₘ = p(δ₀ .+ μ)
-        σ = sum(pₘ, dims=2) / R
+        σ = p(δ₀ .+ μ)
+        𝛔 = sum(σ, dims=2) / R
 
         # Check Newton condition
         if error > newton_tol
             # Update with contraction mapping
-            δ = δ₀ + log.(S) - log.(σ)
+            δ = δ₀ + log.(S) - log.(𝛔)
         else
             # Update with Newton step
-            Δ = (1 / R) * ((I(J) .* (pₘ * (1 .- pₘ)')) - ((1 .- I(J)) .* (pₘ * pₘ'))) ./ σ
-            δ = δ₀ + inv(Δ) * (log.(S) - log.(σ))
+            Δ = (1 / R) * ((I(J) .* (σ * (1 .- σ)')) - ((1 .- I(J)) .* (σ * σ'))) ./ 𝛔
+            δ = δ₀ + inv(Δ) * (log.(S) - log.(𝛔))
         end
 
         # Compute error and save
