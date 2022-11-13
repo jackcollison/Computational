@@ -77,3 +77,8 @@ histogram(L1)
 histogram!(L2)
 histogram!(L3)
 histogram!(L4)
+
+# Optimize quadrature likelihood
+θ = vcat(α₀, α₁, α₂, β, γ, ρ)
+log_likelihood(θ, t, x, z, Q[1], Q[2], u₀, u₁, u₂, ε₀, ε₁, ε₂, method="quadrature")
+@time θ̂ = optimize(θ -> log_likelihood(θ, t, x, z, Q[1], Q[2], u₀, u₁, u₂, ε₀, ε₁, ε₂, method="quadrature"), θ, LBFGS())

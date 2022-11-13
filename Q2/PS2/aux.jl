@@ -73,7 +73,7 @@ function initialize_accept_reject(ρ::Float64; use_halton = true)
     end
 
     # Define correlated errors
-    ε₀ = η₀ .* (1/(1 - ρ)^2)
+    ε₀ = η₀ .* (1/(1 - ρ))
     ε₁ = ρ .* ε₀ .+ η₁
     ε₂ = ρ .* ε₁ .+ η₂
 
