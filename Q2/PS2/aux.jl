@@ -84,8 +84,8 @@ end
 function initialize_quadrature_integration()
 
     # quadrature nodes and weights
-    KPU_1d = DataFrame(CSV.File("/Users/jackcollison/Desktop/Wisconsin/Coursework/Second Year/Computational/Q2/PS2/KPU_d1_l20.csv"))
-    KPU_2d = DataFrame(CSV.File("/Users/jackcollison/Desktop/Wisconsin/Coursework/Second Year/Computational/Q2/PS2/KPU_d2_l20.csv"))
+    KPU_1d = DataFrame(CSV.File("/Users/jackcollison/Desktop/Wisconsin/Coursework/Second Year/Computational/Q2/PS2/KPU_d1_l20.csv", header=0))
+    KPU_2d = DataFrame(CSV.File("/Users/jackcollison/Desktop/Wisconsin/Coursework/Second Year/Computational/Q2/PS2/KPU_d2_l20.csv", header=0))
 
     return [KPU_1d, KPU_2d]
 end
@@ -99,26 +99,26 @@ function likelihood(α₀::Float64, α₁::Float64, α₂::Float64,  β::Array{F
     N = size(x)[1]
 
     # uses distributed for loop; on a test with quadrature, this took about 2 minutes for the dataset
-    result = SharedArray{Float64}(N)
+    result = zeros(N)
 
     if method == "quadrature"
         println("Evaluating likelihoods using quadrature integration method...")
 
-        @showprogress @distributed for i = 1:N
+        for i = 1:N
             result[i] = likelihood_quadrature(α₀, α₁, α₂, β, γ, ρ, t[i], x[i,:], z[i,:], KPU_1d, KPU_2d)
         end
 
     elseif method == "ghk"
         println("Evaluating likelihoods using GHK method...")
 
-        @showprogress @distributed for i = 1:N
+        for i = 1:N
             result[i] = likelihood_ghk(α₀, α₁, α₂, β, γ, ρ, t[i], x[i,:], z[i,:], u₀, u₁, u₂)
         end
 
     elseif method == "accept_reject"
         println("Evaluating likelihoods using accept-reject method...")
 
-        @showprogress @distributed for i = 1:N
+        for i = 1:N
             result[i] = likelihood_accept_reject(α₀, α₁, α₂, β, γ, ρ, t[i], x[i,:], z[i,:], ε₀, ε₁, ε₂)
         end
     else

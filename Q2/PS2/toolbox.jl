@@ -5,22 +5,22 @@ using Optim, ProgressMeter, DataFrames, Distributions
 # One-dimensional quadrature integration
 function integrate_1d(f, upper_bound, KPU_1d)
 # Define functions to translate the (0, 1) interval into appropriate interval
-    points = log.(KPU_1d[:, :x1]) .+ upper_bound
-    jacobian = 1 ./KPU_1d[:, :x1]
+    points = -log.(1 .- KPU_1d[:, :Column1]) .+ upper_bound
+    jacobian = 1 ./ (1 .- KPU_1d[:, :Column1])
 # sum over grid points
-    return sum(KPU_1d[:, :weight] .* f.(points) .* jacobian)
+    return sum(KPU_1d[:, :Column2] .* f.(points) .* jacobian)
 end
 
 # Two-dimensional quadrature integration
 function integrate_2d(f, upper_bound_0::Float64, upper_bound_1::Float64, KPU_2d)
 
-    points_0 = log.(KPU_2d[:, :x1]) .+ upper_bound_0
-    jacobian_0 = 1 ./ KPU_2d[:, :x1]
+    points_0 = -log.(1 .- KPU_2d[:, :Column1]) .+ upper_bound_0
+    jacobian_0 = 1 ./ (1 .- KPU_2d[:, :Column1])
 
-    points_1 = log.(KPU_2d[:, :x2]) .+ upper_bound_1
-    jacobian_1 = 1 ./KPU_2d[:, :x2]
+    points_1 = -log.(1 .- KPU_2d[:, :Column2]) .+ upper_bound_1
+    jacobian_1 = 1 ./ (1 .- KPU_2d[:, :Column2])
 
-    return sum(KPU_2d[:, :weight] .* f.(points_0, points_1) .* jacobian_0 .* jacobian_1)
+    return sum(KPU_2d[:, :Column3] .* f.(points_0, points_1) .* jacobian_0 .* jacobian_1)
 
 end
 
@@ -48,16 +48,16 @@ function likelihood_quadrature(α₀::Float64, α₁::Float64, α₂::Float64,  
     σ₀ = 1/(1 - ρ)^2
 
     if t == 1.0
-        result = Φ((α₀ + x'*β + z[1]*γ)/σ₀)
+        result = Φ((-α₀ - x'*β - z[1]*γ)/σ₀)
     elseif t == 2.0
-        f_2(ε₀) = ϕ(ε₀/σ₀) / σ₀ * (1 - Φ(-α₁ - x'*β - z[2]*γ - ρ * ε₀))
-        result = integrate_1d(f_2, -α₀ - x'*β - z[2]*γ, KPU_1d)
+        f_2(ε₀) = ϕ(ε₀/σ₀) / σ₀ * Φ(-α₁ - x'*β - z[2]*γ - ρ * ε₀)
+        result = integrate_1d(f_2, -α₀ - x'*β - z[1]*γ, KPU_1d)
     elseif t == 3.0
-        f_3(ε₀, ε₁) = ϕ(ε₀/σ₀) / σ₀ * ϕ(ε₁ - ρ*ε₀) * (1 - Φ(-α₂ - x'*β - z[3]*γ - ρ*ε₁))
-        result = integrate_2d(f_3, -α₀ - x'*β - z[3]*γ, -α₁ - x'*β - z[3]*γ, KPU_2d)
+        f_3(ε₀, ε₁) = ϕ(ε₀/σ₀) / σ₀ * ϕ(ε₁ - ρ*ε₀) * Φ(-α₂ - x'*β - z[3]*γ - ρ*ε₁)
+        result = integrate_2d(f_3, -α₀ - x'*β - z[1]*γ, -α₁ - x'*β - z[2]*γ, KPU_2d)
     elseif t == 4.0
-        f_4(ε₀, ε₁) = ϕ(ε₀/σ₀) / σ₀ * ϕ(ε₁ - ρ*ε₀) * Φ(-α₂ - x'*β - z[3]*γ - ρ*ε₁)
-        result = integrate_2d(f_4, -α₀ - x'*β - z[3]*γ, -α₁ - x'*β - z[3]*γ, KPU_2d)
+        f_4(ε₀, ε₁) = ϕ(ε₀/σ₀) / σ₀ * ϕ(ε₁ - ρ*ε₀) * (1 - Φ(-α₂ - x'*β - z[3]*γ - ρ*ε₁))
+        result = integrate_2d(f_4, -α₀ - x'*β - z[1]*γ, -α₁ - x'*β - z[2]*γ, KPU_2d)
     else
         error("Invalid value of t.")
     end
@@ -79,7 +79,7 @@ function likelihood_ghk(α₀::Float64, α₁::Float64, α₂::Float64,  β::Arr
 
     if t == 1.0
 
-        return 1 - truncation₀
+        return truncation₀
 
     else # if t = 2.0 or 3.0 or 4.0
 
@@ -87,11 +87,11 @@ function likelihood_ghk(α₀::Float64, α₁::Float64, α₂::Float64,  β::Arr
         η₀ = Φ_inverse.(pr₀)
         ε₀ = η₀ .* σ₀
 
-        truncation₁ = Φ.(-α₁ .- x'*β .- z[2]*γ .- ρ.*ε₀) # initializes simulation-specific truncation points
+        truncation₁ = 1 .- Φ.(-α₁ .- x'*β .- z[2]*γ .- ρ.*ε₀) # initializes simulation-specific truncation points
 
         if t == 2.0
 
-            return sum(truncation₀ .* (1 .- truncation₁))/n_trials
+            return sum((1 .- truncation₀) .* truncation₁) / n_trials
 
         else # if t = 3.0 or 4.0
 
@@ -99,15 +99,15 @@ function likelihood_ghk(α₀::Float64, α₁::Float64, α₂::Float64,  β::Arr
             η₁ = Φ_inverse.(pr₁) # initializes first shocks
             ε₁ = ρ .* ε₀ .+ η₁
 
-            truncation₂ = Φ.(-α₂ .- x'*β .- z[3]*γ .- ρ.*ε₁)
+            truncation₂ = 1 .- Φ.(-α₂ .- x'*β .- z[3]*γ .- ρ.*ε₁)
 
             if t == 3.0
 
-                return sum(truncation₀ .* truncation₁ .* (1 .- truncation₂))/n_trials
+                return sum((1 .- truncation₀) .* (1 .- truncation₁) .* truncation₂) / n_trials
 
             else # t = 4.0
 
-                return sum(truncation₀ .* truncation₁ .* truncation₂)/n_trials
+                return sum((1 .- truncation₀) .* (1 .- truncation₁) .* (1 .- truncation₂)) / n_trials
 
             end
         end
@@ -124,13 +124,13 @@ function likelihood_accept_reject(α₀::Float64, α₁::Float64, α₂::Float64
 
     # based on the value of t counts the number of accepted simulations
     if t == 1.0
-        count = sum( α₀ + x'*β + z[1]*γ .+ ε₀ .> 0)
+        count = sum( α₀ + x'*β + z[1]*γ .+ ε₀ .< 0)
     elseif t == 2.0
-        count = sum((α₀ + x'*β + z[1]*γ .+ ε₀ .< 0) .* (α₁ + x'*β + z[2]*γ .+ ε₁ .> 0))
+        count = sum((α₀ + x'*β + z[1]*γ .+ ε₀ .>= 0) .* (α₁ + x'*β + z[2]*γ .+ ε₁ .< 0))
     elseif t == 3.0
-        count = sum((α₀ + x'*β + z[1]*γ .+ ε₀ .< 0) .* (α₁ + x'*β + z[2]*γ .+ ε₁ .< 0) .* (α₂ + x'*β + z[3]*γ .+ ε₂ .> 0))
+        count = sum((α₀ + x'*β + z[1]*γ .+ ε₀ .>= 0) .* (α₁ + x'*β + z[2]*γ .+ ε₁ .>= 0) .* (α₂ + x'*β + z[3]*γ .+ ε₂ .< 0))
     elseif t == 4.0
-        count = sum((α₀ + x'*β + z[1]*γ .+ ε₀ .< 0) .* (α₁ + x'*β + z[2]*γ .+ ε₁ .< 0) .* (α₂ + x'*β + z[3]*γ .+ ε₂ .< 0))
+        count = sum((α₀ + x'*β + z[1]*γ .+ ε₀ .>= 0) .* (α₁ + x'*β + z[2]*γ .+ ε₁ .>= 0) .* (α₂ + x'*β + z[3]*γ .+ ε₂ .>= 0))
     else
         error("Invalid value of t.")
     end

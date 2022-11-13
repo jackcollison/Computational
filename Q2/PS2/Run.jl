@@ -3,7 +3,7 @@
 # Date: November, 2022
 
 # Include libraries
-using DataFrames, StatFiles, Optim, CSV, Random, SharedArrays
+using DataFrames, StatFiles, Optim, CSV, Random, SharedArrays, Plots
 
 # Include helpers
 include("toolbox.jl")
@@ -41,3 +41,39 @@ u₀, u₁, u₂ = initialize_ghk(;use_halton = true)
 
 # Quadrature 
 @elapsed QL = likelihood(α₀, α₁, α₂, β, γ, ρ, t, x, z, Q[1], Q[2], u₀, u₁, u₂, ε₀, ε₁, ε₂; method = "quadrature")
+
+# Plot quadrature likelihood
+L1 = [QL[i] for i = 1:size(QL,1) if t[i] == 1]
+L2 = [QL[i] for i = 1:size(QL,1) if t[i] == 2]
+L3 = [QL[i] for i = 1:size(QL,1) if t[i] == 3]
+L4 = [QL[i] for i = 1:size(QL,1) if t[i] == 4]
+histogram(L1)
+histogram!(L2)
+histogram!(L3)
+histogram!(L4)
+
+# GHK 
+@elapsed GHKL = likelihood(α₀, α₁, α₂, β, γ, ρ, t, x, z, Q[1], Q[2], u₀, u₁, u₂, ε₀, ε₁, ε₂; method = "ghk")
+
+# Plot GHK likelihood
+L1 = [GHKL[i] for i = 1:size(GHKL,1) if t[i] == 1]
+L2 = [GHKL[i] for i = 1:size(GHKL,1) if t[i] == 2]
+L3 = [GHKL[i] for i = 1:size(GHKL,1) if t[i] == 3]
+L4 = [GHKL[i] for i = 1:size(GHKL,1) if t[i] == 4]
+histogram(L1)
+histogram!(L2)
+histogram!(L3)
+histogram!(L4)
+
+# Accept-Reject 
+@elapsed ARL = likelihood(α₀, α₁, α₂, β, γ, ρ, t, x, z, Q[1], Q[2], u₀, u₁, u₂, ε₀, ε₁, ε₂; method = "accept_reject")
+
+# Plot GHK likelihood
+L1 = [ARL[i] for i = 1:size(ARL,1) if t[i] == 1]
+L2 = [ARL[i] for i = 1:size(ARL,1) if t[i] == 2]
+L3 = [ARL[i] for i = 1:size(ARL,1) if t[i] == 3]
+L4 = [ARL[i] for i = 1:size(ARL,1) if t[i] == 4]
+histogram(L1)
+histogram!(L2)
+histogram!(L3)
+histogram!(L4)
