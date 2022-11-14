@@ -66,6 +66,6 @@ result[!, :likelihood_accept_reject_pseudo] = likelihoods_accept_reject_pseudo
 CSV.write("result.csv", result)
 
 # LBFGS optimization
-optimization_results = optimize(θ -> -log_likelihood(θ, t, x, z, q_grids[1], q_grids[2], u_0_h, u_1_h, u_2_h, ε_0_h, ε_1_h, ε_2_h),
-                                vcat(α_0, α_1, α_2, β, γ, ρ),
+optimization_results = optimize(θ -> -log_likelihood(θ, t, x, z, q_grids[1], q_grids[2], u₀_h, u₁_h, u₂_h, ε₀_h, ε₁_h, ε₂_h),
+                                vcat(α₀, α₁, α₂, β, γ, ρ),
                                 LBFGS())
