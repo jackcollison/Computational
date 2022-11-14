@@ -47,10 +47,10 @@ QL1 = [QL[i] for i = 1:size(QL,1) if t[i] == 1]
 QL2 = [QL[i] for i = 1:size(QL,1) if t[i] == 2]
 QL3 = [QL[i] for i = 1:size(QL,1) if t[i] == 3]
 QL4 = [QL[i] for i = 1:size(QL,1) if t[i] == 4]
-histogram(QL1)
-histogram!(QL2)
-histogram!(QL3)
-histogram!(QL4)
+histogram(QL1, labels="T = 1")
+histogram!(QL2, labels="T = 2")
+histogram!(QL3, labels="T = 3")
+histogram!(QL4, labels="T = 4")
 
 # GHK 
 @elapsed GHKL = likelihood(α₀, α₁, α₂, β, γ, ρ, t, x, z, Q[1], Q[2], u₀, u₁, u₂, ε₀, ε₁, ε₂; method = "ghk")
@@ -60,10 +60,10 @@ GHKL1 = [GHKL[i] for i = 1:size(GHKL,1) if t[i] == 1]
 GHKL2 = [GHKL[i] for i = 1:size(GHKL,1) if t[i] == 2]
 GHKL3 = [GHKL[i] for i = 1:size(GHKL,1) if t[i] == 3]
 GHKL4 = [GHKL[i] for i = 1:size(GHKL,1) if t[i] == 4]
-histogram(GHKL1)
-histogram!(GHKL2)
-histogram!(GHKL3)
-histogram!(GHKL4)
+histogram(GHKL1, labels="T = 1")
+histogram!(GHKL2, labels="T = 2")
+histogram!(GHKL3, labels="T = 3")
+histogram!(GHKL4, labels="T = 4")
 
 # Accept-Reject 
 @elapsed ARL = likelihood(α₀, α₁, α₂, β, γ, ρ, t, x, z, Q[1], Q[2], u₀, u₁, u₂, ε₀, ε₁, ε₂; method = "accept_reject")
@@ -73,10 +73,10 @@ ARL1 = [ARL[i] for i = 1:size(ARL,1) if t[i] == 1]
 ARL2 = [ARL[i] for i = 1:size(ARL,1) if t[i] == 2]
 ARL3 = [ARL[i] for i = 1:size(ARL,1) if t[i] == 3]
 ARL4 = [ARL[i] for i = 1:size(ARL,1) if t[i] == 4]
-histogram(ARL1)
-histogram!(ARL2)
-histogram!(ARL3)
-histogram!(ARL4)
+histogram(ARL1, labels="T = 1")
+histogram!(ARL2, labels="T = 2")
+histogram!(ARL3, labels="T = 3")
+histogram!(ARL4, labels="T = 4")
 
 # Optimize quadrature likelihood
 θ = vcat(α₀, α₁, α₂, β, γ, ρ)
@@ -99,7 +99,7 @@ QL1 = [QL[i] for i = 1:size(QL,1) if t[i] == 1]
 QL2 = [QL[i] for i = 1:size(QL,1) if t[i] == 2]
 QL3 = [QL[i] for i = 1:size(QL,1) if t[i] == 3]
 QL4 = [QL[i] for i = 1:size(QL,1) if t[i] == 4]
-histogram(QL1)
-histogram!(QL2)
-histogram!(QL3)
-histogram!(QL4)
+histogram(QL1, labels="T = 1")
+histogram!(QL2, labels="T = 2")
+histogram!(QL3, labels="T = 3")
+histogram!(QL4, labels="T = 4")
