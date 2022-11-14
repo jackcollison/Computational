@@ -3,7 +3,7 @@
 # Date: November, 2022
 
 # Include libraries
-using DataFrames, StatFiles, Optim, CSV, Random, SharedArrays, Plots
+using DataFrames, StatFiles, Optim, CSV, Random, SharedArrays, Plots, ForwardDiff
 
 # Include helpers
 include("toolbox.jl")
@@ -43,43 +43,63 @@ u₀, u₁, u₂ = initialize_ghk(;use_halton = true)
 @elapsed QL = likelihood(α₀, α₁, α₂, β, γ, ρ, t, x, z, Q[1], Q[2], u₀, u₁, u₂, ε₀, ε₁, ε₂; method = "quadrature")
 
 # Plot quadrature likelihood
-L1 = [QL[i] for i = 1:size(QL,1) if t[i] == 1]
-L2 = [QL[i] for i = 1:size(QL,1) if t[i] == 2]
-L3 = [QL[i] for i = 1:size(QL,1) if t[i] == 3]
-L4 = [QL[i] for i = 1:size(QL,1) if t[i] == 4]
-histogram(L1)
-histogram!(L2)
-histogram!(L3)
-histogram!(L4)
+QL1 = [QL[i] for i = 1:size(QL,1) if t[i] == 1]
+QL2 = [QL[i] for i = 1:size(QL,1) if t[i] == 2]
+QL3 = [QL[i] for i = 1:size(QL,1) if t[i] == 3]
+QL4 = [QL[i] for i = 1:size(QL,1) if t[i] == 4]
+histogram(QL1)
+histogram!(QL2)
+histogram!(QL3)
+histogram!(QL4)
 
 # GHK 
 @elapsed GHKL = likelihood(α₀, α₁, α₂, β, γ, ρ, t, x, z, Q[1], Q[2], u₀, u₁, u₂, ε₀, ε₁, ε₂; method = "ghk")
 
 # Plot GHK likelihood
-L1 = [GHKL[i] for i = 1:size(GHKL,1) if t[i] == 1]
-L2 = [GHKL[i] for i = 1:size(GHKL,1) if t[i] == 2]
-L3 = [GHKL[i] for i = 1:size(GHKL,1) if t[i] == 3]
-L4 = [GHKL[i] for i = 1:size(GHKL,1) if t[i] == 4]
-histogram(L1)
-histogram!(L2)
-histogram!(L3)
-histogram!(L4)
+GHKL1 = [GHKL[i] for i = 1:size(GHKL,1) if t[i] == 1]
+GHKL2 = [GHKL[i] for i = 1:size(GHKL,1) if t[i] == 2]
+GHKL3 = [GHKL[i] for i = 1:size(GHKL,1) if t[i] == 3]
+GHKL4 = [GHKL[i] for i = 1:size(GHKL,1) if t[i] == 4]
+histogram(GHKL1)
+histogram!(GHKL2)
+histogram!(GHKL3)
+histogram!(GHKL4)
 
 # Accept-Reject 
 @elapsed ARL = likelihood(α₀, α₁, α₂, β, γ, ρ, t, x, z, Q[1], Q[2], u₀, u₁, u₂, ε₀, ε₁, ε₂; method = "accept_reject")
 
 # Plot Accept-Reject likelihood
-L1 = [ARL[i] for i = 1:size(ARL,1) if t[i] == 1]
-L2 = [ARL[i] for i = 1:size(ARL,1) if t[i] == 2]
-L3 = [ARL[i] for i = 1:size(ARL,1) if t[i] == 3]
-L4 = [ARL[i] for i = 1:size(ARL,1) if t[i] == 4]
-histogram(L1)
-histogram!(L2)
-histogram!(L3)
-histogram!(L4)
+ARL1 = [ARL[i] for i = 1:size(ARL,1) if t[i] == 1]
+ARL2 = [ARL[i] for i = 1:size(ARL,1) if t[i] == 2]
+ARL3 = [ARL[i] for i = 1:size(ARL,1) if t[i] == 3]
+ARL4 = [ARL[i] for i = 1:size(ARL,1) if t[i] == 4]
+histogram(ARL1)
+histogram!(ARL2)
+histogram!(ARL3)
+histogram!(ARL4)
 
 # Optimize quadrature likelihood
 θ = vcat(α₀, α₁, α₂, β, γ, ρ)
-log_likelihood(θ, t, x, z, Q[1], Q[2], u₀, u₁, u₂, ε₀, ε₁, ε₂, method="quadrature")
-@time θ̂ = optimize(θ -> log_likelihood(θ, t, x, z, Q[1], Q[2], u₀, u₁, u₂, ε₀, ε₁, ε₂, method="quadrature"), θ, LBFGS())
-# Optimization doesn't converge... goes to infinity
+ll_quad(θ, t, x, z, Q[1], Q[2])
+@time θ̂ = optimize(
+    θ -> ll_quad(θ, t, x, z, Q[1], Q[2]), 
+    θ, LBFGS(), Optim.Options(show_trace = true, show_every=1, iterations=200, g_tol=1e-3);
+    autodiff=:forward
+)
+
+# Extract minimizer
+θ̂.minimizer
+
+# Find likelihoods of minimizer
+θᵒ = θ̂.minimizer
+@elapsed QL = likelihood(θᵒ[1], θᵒ[2], θᵒ[3], θᵒ[4:16], θᵒ[17], θᵒ[18], t, x, z, Q[1], Q[2], u₀, u₁, u₂, ε₀, ε₁, ε₂; method = "quadrature")
+
+# Plot quadrature likelihood
+QL1 = [QL[i] for i = 1:size(QL,1) if t[i] == 1]
+QL2 = [QL[i] for i = 1:size(QL,1) if t[i] == 2]
+QL3 = [QL[i] for i = 1:size(QL,1) if t[i] == 3]
+QL4 = [QL[i] for i = 1:size(QL,1) if t[i] == 4]
+histogram(QL1)
+histogram!(QL2)
+histogram!(QL3)
+histogram!(QL4)

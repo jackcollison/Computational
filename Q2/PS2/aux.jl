@@ -91,17 +91,12 @@ function initialize_quadrature_integration()
 end
 
 # compute likelihood for the matrix
-function likelihood(α₀::Float64, α₁::Float64, α₂::Float64,  β::Array{Float64, 1}, γ::Float64, ρ::Float64,
-    t::Array{Float64, 2}, x::Array{Float64, 2}, z::Array{Float64, 2},  KPU_1d, KPU_2d,
-    u₀::Array{Float64, 1}, u₁::Array{Float64, 1}, u₂::Array{Float64, 1},
-    ε₀::Array{Float64, 1}, ε₁::Array{Float64, 1}, ε₂::Array{Float64, 1}; method = "quadrature")
-
+function likelihood(α₀, α₁, α₂,  β, γ, ρ, t, x, z,  KPU_1d, KPU_2d, u₀, u₁, u₂, ε₀, ε₁, ε₂; method = "quadrature")
     N = size(x)[1]
-
     result = zeros(N)
 
     if method == "quadrature"
-        println("Evaluating likelihoods using quadrature integration method...")
+        # println("Evaluating likelihoods using quadrature integration method...")
 
         for i = 1:N
             result[i] = likelihood_quadrature(α₀, α₁, α₂, β, γ, ρ, t[i], x[i,:], z[i,:], KPU_1d, KPU_2d)
@@ -127,31 +122,49 @@ function likelihood(α₀::Float64, α₁::Float64, α₂::Float64,  β::Array{F
     return result
 end
 
-function log_likelihood(θ::Array{Float64, 1}, t::Array{Float64, 2}, x::Array{Float64, 2}, z::Array{Float64, 2},  KPU_1d, KPU_2d,
-    u₀::Array{Float64, 1}, u₁::Array{Float64, 1}, u₂::Array{Float64, 1},
-    ε₀::Array{Float64, 1}, ε₁::Array{Float64, 1}, ε₂::Array{Float64, 1}; method = "quadrature")
+function log_likelihood(θ, t, x, z, KPU_1d, KPU_2d, u₀, u₁, u₂, ε₀, ε₁, ε₂; method = "quadrature")
 
     K_x = size(x)[2]
 
     α₀ = θ[1]
     α₁ = θ[2]
     α₂ = θ[3]
-    β   = θ[4:(K_x+3)]
-    γ   = θ[K_x+4]
-    ρ   = θ[K_x+5]
+    β = θ[4:(K_x+3)]
+    γ = θ[K_x+4]
+    ρ = θ[K_x+5]
 
     ll = -sum(log.(likelihood(α₀, α₁, α₂, β, γ, ρ, t, x, z, KPU_1d, KPU_2d, u₀, u₁, u₂, ε₀, ε₁, ε₂; method = method)))
 
-    println("Log-likelihood = ", ll)
+    # println("Log-likelihood = ", ll)
 
-    println("α_0 = ", α₀)
-    println("α_1 = ", α₁)
-    println("α_2 = ", α₂)
-    println("β = ", β)
-    println("γ = ", γ)
-    println("ρ = ", ρ)
+    # println("α₀ = ", α₀)
+    # println("α₁ = ", α₁)
+    # println("α₂ = ", α₂)
+    # println("β = ", β)
+    # println("γ = ", γ)
+    # println("ρ = ", ρ)
 
-    println("******************************************************")
+    # println("******************************************************")
 
     return ll
+end
+
+function ll_quad(θ, t, x, z, KPU_1d, KPU_2d)
+    K_x = size(x)[2]
+
+    α₀ = θ[1]
+    α₁ = θ[2]
+    α₂ = θ[3]
+    β = θ[4:(K_x+3)]
+    γ = θ[K_x+4]
+    ρ = θ[K_x+5]
+
+    N = size(x)[1]
+    result = []
+    for i = 1:N
+        push!(result, likelihood_quadrature(α₀, α₁, α₂, β, γ, ρ, t[i], x[i,:], z[i,:], KPU_1d, KPU_2d))
+    end
+
+    return -sum(log.(result))
+
 end

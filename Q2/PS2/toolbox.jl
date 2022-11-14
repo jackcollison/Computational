@@ -12,7 +12,7 @@ function integrate_1d(f, upper_bound, KPU_1d)
 end
 
 # Two-dimensional quadrature integration
-function integrate_2d(f, upper_bound_0::Float64, upper_bound_1::Float64, KPU_2d)
+function integrate_2d(f, upper_bound_0, upper_bound_1, KPU_2d)
 
     points_0 = -log.(1 .- KPU_2d[:, :Column1]) .+ upper_bound_0
     jacobian_0 = 1 ./ (1 .- KPU_2d[:, :Column1])
@@ -26,23 +26,23 @@ end
 
 # Standard normal distribution functions
 # Standard Normal PDF
-function ϕ(x::Float64)
+function ϕ(x)
     1/sqrt(2 * π) * exp((-1/2)*x^2)
 end
 # Standard Normal CDF
-function Φ(x::Float64)
+function Φ(x)
     return cdf(Normal(0, 1), x)
 end
 # Inverse Standard Normal CDF
-function Φ_inverse(p::Float64)
+function Φ_inverse(p)
     return quantile(Normal(0, 1), p)
 end
 
 # Quadrature integration
 
 # Using quadrature integration
-function likelihood_quadrature(α₀::Float64, α₁::Float64, α₂::Float64,  β::Array{Float64, 1}, γ::Float64, ρ::Float64,
-    t::Float64, x::Array{Float64, 1}, z::Array{Float64, 1}, KPU_1d, KPU_2d)
+function likelihood_quadrature(α₀, α₁, α₂,  β, γ, ρ,
+    t, x, z, KPU_1d, KPU_2d)
 
     result = 0.0
     σ₀ = 1/(1 - ρ)
@@ -119,22 +119,18 @@ function likelihood_accept_reject(α₀::Float64, α₁::Float64, α₂::Float64
 
     # based on the value of t counts the number of accepted simulations
     if t == 1.0
-        # count = sum(α₀ + x'*β + z[1]*γ .+ ε₀ .< 0)
         count = sum(Φ.(b₀ / σ₀))
     elseif t == 2.0
-        # count = sum((α₀ + x'*β + z[1]*γ .+ ε₀ .>= 0) .* (α₁ + x'*β + z[2]*γ .+ ε₁ .< 0))
         if length((a₀ .== 1)) > 0
-            count = sum(a₀ .* Φ.(b₁ .- ε₁)) / length((a₀ .== 1))
+            count = sum(a₀ .* Φ.(b₁ .- ρ .* ε₀)) / length((a₀ .== 1))
         end
     elseif t == 3.0
-        # count = sum((α₀ + x'*β + z[1]*γ .+ ε₀ .>= 0) .* (α₁ + x'*β + z[2]*γ .+ ε₁ .>= 0) .* (α₂ + x'*β + z[3]*γ .+ ε₂ .< 0))
         if length((a₂ .== 1)) > 0
-            count = sum(a₂ .* Φ.(b₂ .- ε₂)) / length((a₂ .== 1))
+            count = sum(a₂ .* Φ.(b₂ .- ρ .* ε₁)) / length((a₂ .== 1))
         end
     elseif t == 4.0
-        # count = sum((α₀ + x'*β + z[1]*γ .+ ε₀ .>= 0) .* (α₁ + x'*β + z[2]*γ .+ ε₁ .>= 0) .* (α₂ + x'*β + z[3]*γ .+ ε₂ .>= 0))
          if length((a₂ .== 1)) > 0
-            count = sum(a₂ .* (1 .- Φ.(b₂ .- ε₂))) / length((a₂ .== 1))
+            count = sum(a₂ .* (1 .- Φ.(b₂ .- ρ .* ε₁))) / length((a₂ .== 1))
          end
     else
         error("Invalid value of t.")
