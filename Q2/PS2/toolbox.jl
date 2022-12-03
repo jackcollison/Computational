@@ -5,9 +5,12 @@ using Optim, ProgressMeter, DataFrames, Distributions
 # One-dimensional quadrature integration
 function integrate_1d(f, upper_bound, KPU_1d)
 # Define functions to translate the (0, 1) interval into appropriate interval
-    points = -log.(1 .- KPU_1d[:, :Column1]) .+ upper_bound
-    jacobian = 1 ./ (1 .- KPU_1d[:, :Column1])
-# sum over grid points
+    # points = -log.(1 .- KPU_1d[:, :Column1]) .+ upper_bound
+    # jacobian = 1 ./ (1 .- KPU_1d[:, :Column1])
+
+    points = log.(KPU_1d[:, :Column1]) .+ upper_bound
+    jacobian = 1 ./ (KPU_1d[:, :Column1])
+    # sum over grid points
     return sum(KPU_1d[:, :Column2] .* f.(points) .* jacobian)
 end
 
@@ -19,6 +22,12 @@ function integrate_2d(f, upper_bound_0, upper_bound_1, KPU_2d)
 
     points_1 = -log.(1 .- KPU_2d[:, :Column2]) .+ upper_bound_1
     jacobian_1 = 1 ./ (1 .- KPU_2d[:, :Column2])
+
+    # points_0 = log.(KPU_2d[:, :Column1]) .+ upper_bound_0
+    # jacobian_0 = 1 ./ (KPU_2d[:, :Column1])
+
+    # points_1 = log.(KPU_2d[:, :Column2]) .+ upper_bound_1
+    # jacobian_1 = 1 ./ (KPU_2d[:, :Column2])
 
     return sum(KPU_2d[:, :Column3] .* f.(points_0, points_1) .* jacobian_0 .* jacobian_1)
 
@@ -61,6 +70,22 @@ function likelihood_quadrature(α₀, α₁, α₂,  β, γ, ρ,
     else
         error("Invalid value of t.")
     end
+
+    # if t == 1.0
+    #     result = Φ((-α₀ - x'*β - z[1]*γ)/σ₀)
+    # elseif t == 2.0
+    #     f_2(ε₀) = ϕ(ε₀/σ₀) / σ₀ * Φ(-α₁ - x'*β - z[2]*γ - ρ * ε₀)
+    #     result = integrate_1d(f_2, α₀ + x'*β + z[1]*γ, KPU_1d)
+    # elseif t == 3.0
+    #     f_3(ε₀, ε₁) = ϕ(ε₀/σ₀) / σ₀ * ϕ(ε₁ - ρ*ε₀) * Φ(-α₂ - x'*β - z[3]*γ - ρ*ε₁)
+    #     result = integrate_2d(f_3, α₀ + x'*β + z[1]*γ, α₁ + x'*β + z[2]*γ, KPU_2d)
+    # elseif t == 4.0
+    #     f_4(ε₀, ε₁) = ϕ(ε₀/σ₀) / σ₀ * ϕ(ε₁ - ρ*ε₀) * (Φ(α₂ + x'*β + z[3]*γ - ρ*ε₁))
+    #     result = integrate_2d(f_4, α₀ + x'*β + z[1]*γ, α₁ + x'*β + z[2]*γ, KPU_2d)
+    # else
+    #     error("Invalid value of t.")
+    # end
+
 
     return result
 end
