@@ -21,6 +21,7 @@ using Parameters, Tables, LinearAlgebra, CSV, Printf, DataFrames, Statistics
 
     # State space and transition matrices
     S = CSV.File("/Users/jackcollison/Desktop/Wisconsin/Coursework/Second Year/Computational/Q2/PS4/PS4_state_space.csv") |> Tables.matrix
+    Sₛ = S[:,]
     Iₛ = S[:,3]
     Cₛ = S[:,4]
     Pₛ = S[:,5]
@@ -34,6 +35,8 @@ using Parameters, Tables, LinearAlgebra, CSV, Printf, DataFrames, Statistics
     # Simulated data
     data = DataFrame(CSV.File("/Users/jackcollison/Desktop/Wisconsin/Coursework/Second Year/Computational/Q2/PS4/PS4_simdata.csv"))
     CP = combine(groupby(data, :state_id), :choice .=> mean .=> :P)
+    ID = data.state_id
+    Y = data.choice
     P₀ = min.(max.(1 .- CP.P, 0.001), 0.999)
     P₁ = min.(max.(CP.P, 0.001), 0.999)
 end
@@ -168,6 +171,14 @@ end
 ########################################################
 
 # Nested fixed point algorithm
-function NXFP(p::Primitives, λ::Float64, 𝐏::Array{Float64})
-    SolveCCP(p, λ, 𝐏)
+function NXFP(p::Primitives, λ::Array{Float64}, 𝐏::Array{Float64}; tol::Float64=1e-14, verbose::Bool=false)
+    # Unpack primitives
+    @unpack Y, ID = p
+
+    # Compute policy function
+    𝐏ᵒ = SolveCCP(p, λ[1], 𝐏; tol=tol, verbose=verbose)[2]
+    𝐏ˢ = [𝐏ᵒ[s + 1] for s in ID]
+
+    # Return log-likelihood
+    return -sum(Y .* log.(𝐏ˢ) .+ (1.0 .- Y) .* log.(1.0 .- 𝐏ˢ))
 end
