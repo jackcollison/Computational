@@ -71,7 +71,7 @@ function 𝐏(p::Primitives, i::Int64, Δq::Int64, x::Float64, δ::Float64)
     # Check cases
     if Δq == 1
         # Return improvement
-        return ((1 - δ) * α * x + + δ * α * x * (i == 1)) / (1 + α * x) * (i < n)
+        return ((1 - δ) * α * x + δ * α * x * (i == 1)) / (1 + α * x) * (i < n)
     elseif Δq == 0
         # Return no improvement
         return (1 - δ + δ * α * x + (δ - δ * α * x) * (i == 1) + (α * x - δ * α * x) * (i == n)) / (1 + α * x)
@@ -194,8 +194,9 @@ function SolveModel(p::Primitives, V::Matrix{Float64}, δ::Float64; ε₁::Float
 
     # Print statement
     if verbose
-        println("\n****************************************************************************************\n")
-        @printf "Completed in %d iterations with policy error = %.5g and value error = %.5g\n" k e₁ e₂
+        println("\n*******************************************************************************************\n")
+        @printf "Completed in %d iterations with policy error ε₁ = %.3g and value error ε₂ = %.3g\n" k e₁ e₂
+        println("\n*******************************************************************************************\n")
     end 
 
     # Return values
