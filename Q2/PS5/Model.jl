@@ -26,9 +26,9 @@ end
 ########################################################
 
 # Best response function
-function Rᶜ(a::Float64, b::Float64, q̄ᵢ::Float64, q₋ᵢ::Float64)
+function Rᶜ(a::Float64, q̄ᵢ::Float64, q₋ᵢ::Float64)
     # Return value
-    return max(min(q̄ᵢ, a / (2 * b) - q₋ᵢ / 2), 0.0)
+    return max(min(q̄ᵢ, (a - q₋ᵢ) / 2), 0.0)
 end
 
 # Best reply function for Cournot
@@ -37,9 +37,9 @@ function qᶜ(p::Primitives, q̄ᵢ::Float64, q̄₋ᵢ::Float64)
     @unpack a, b = p
 
     # Pre-compute values
-    qⁱ = a / (3 * b)
-    Rᵢ = Rᶜ(a, b, q̄ᵢ, q̄₋ᵢ)
-    R₋ᵢ = Rᶜ(a, b, q̄₋ᵢ, Rᵢ)
+    qⁱ = a / 3
+    Rᵢ = Rᶜ(a, q̄ᵢ, q̄₋ᵢ)
+    R₋ᵢ = Rᶜ(a, q̄₋ᵢ, Rᵢ)
 
     # Check conditions
     if q̄ᵢ >= qⁱ && q̄₋ᵢ >= qⁱ
@@ -60,7 +60,7 @@ function Πᶜ(p::Primitives, q̄ᵢ::Float64, q̄₋ᵢ::Float64)
     @unpack a, b = p
 
     # Return value
-    return (a - b * (qᶜ(p, q̄ᵢ, q̄₋ᵢ) + qᶜ(p, q̄₋ᵢ, q̄ᵢ))) * qᶜ(p, q̄ᵢ, q̄₋ᵢ)
+    return (a - (qᶜ(p, q̄ᵢ, q̄₋ᵢ) + qᶜ(p, q̄₋ᵢ, q̄ᵢ))) / b * qᶜ(p, q̄ᵢ, q̄₋ᵢ)
 end
 
 # Capacity evolution
@@ -115,20 +115,20 @@ function 𝐱(p::Primitives, i::Int64, j::Int64, W::Matrix{Float64}, δ::Float64
     # Check cases
     if i > 1 && i < n
         # Update values
-        Wᵢ₋₁ = W[i - 1, j]
-        Wᵢ₊₁ = W[i + 1, j]
+        Wᵢ₋₁ = min(W[i - 1, j], Wᵢ)
+        Wᵢ₊₁ = max(W[i + 1, j], Wᵢ)
 
         # Return value
         return max(0.0, (-1.0 + sqrt(α * β * ((1 - δ) * (Wᵢ₊₁ - Wᵢ) + δ * (Wᵢ - Wᵢ₋₁)))) / α)
     elseif i == 1
         # Update values
-        Wᵢ₊₁ = W[i + 1, j]
+        Wᵢ₊₁ = max(W[i + 1, j], Wᵢ)
 
         # Return value
-        return max(0.0, (-1.0 + sqrt(α * β * (Wᵢ₊₁ - Wᵢ))) / α)
+        return max(0.0, (-1.0 + sqrt(α * β * (1 - δ) * (Wᵢ₊₁ - Wᵢ))) / α)
     elseif i == n
         # Update values
-        Wᵢ₋₁ = W[i - 1, j]
+        Wᵢ₋₁ = min(W[i - 1, j], Wᵢ)
 
         # Return value
         return max(0.0, (-1.0 + sqrt(β * δ * α * (Wᵢ - Wᵢ₋₁))) / α)
@@ -139,11 +139,10 @@ function 𝐱(p::Primitives, i::Int64, j::Int64, W::Matrix{Float64}, δ::Float64
 end
 
 # Solve model
-function SolveModel(p::Primitives, V::Matrix{Float64}, δ::Float64; ε₁::Float64=1e-4, ε₂::Float64=1e-4, verbose::Bool=false)
+function SolveModel(p::Primitives, V::Matrix{Float64}, δ::Float64; tol::Float64=1e-4, verbose::Bool=false)
     # Intiailize variables
     @unpack q̄, n, β = p
-    e₁ = Inf
-    e₂ = Inf
+    ε = Inf
     k = 0
     Π₀ = V
 
@@ -154,19 +153,19 @@ function SolveModel(p::Primitives, V::Matrix{Float64}, δ::Float64; ε₁::Float
 
     # Print statement
     if verbose
-        println("Firm Iteration    Policy Error      Value Error")
-        println("-------------------------------------------------")
+        println("Firm Iteration    Error")
+        println("-------------------------------")
     end
 
     # Iterate while error is large
-    while (e₁ <= ε₁) * (e₂ <= ε₂) == 0
+    while ε > tol
         # Increment
         k += 1
 
         # Update values
         W = [𝐖(p, i, j, V, X[j, i], δ) for i in 1:n, j in 1:n]
         Xp = [𝐱(p, i, j, W, δ) for i in 1:n, j in 1:n]
-        Vp = Π₀ .- Xp
+        Vp = Π₀ - Xp
 
         # Iterate over states
         for Δ in -1:1:1
@@ -179,8 +178,7 @@ function SolveModel(p::Primitives, V::Matrix{Float64}, δ::Float64; ε₁::Float
         end
 
         # Update error
-        e₁ = maximum(abs.(Xp - X))
-        e₂ = maximum(abs.(Vp - V))
+        ε = max(maximum(abs.(Xp - X)), maximum(abs.(Vp - V)))
 
         # Update values
         X = Xp
@@ -188,15 +186,15 @@ function SolveModel(p::Primitives, V::Matrix{Float64}, δ::Float64; ε₁::Float
 
         # Print statement
         if verbose
-            @printf "i = %-13d ε₁ = %-12.3g ε₂ = %-12.3g\n" k e₁ e₂
+            @printf "i = %-13d ε = %-12.3g\n" k ε
         end
     end
 
     # Print statement
     if verbose
-        println("\n*******************************************************************************************\n")
-        @printf "Completed in %d iterations with policy error ε₁ = %.3g and value error ε₂ = %.3g\n" k e₁ e₂
-        println("\n*******************************************************************************************\n")
+        println("\n******************************************************\n")
+        @printf "Completed in %d iterations with error ε = %.3g\n" k ε
+        println("\n******************************************************\n")
     end 
 
     # Return values
