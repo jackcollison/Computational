@@ -7,7 +7,7 @@
 ##################################################
 
 # Import required packages
-using Parameters, Tables, LinearAlgebra, CSV, Printf, DataFrames, Statistics
+using Parameters, Tables, LinearAlgebra, CSV, Printf, DataFrames, Statistics, Random
 
 # Create primitives
 @with_kw struct Primitives
@@ -125,13 +125,13 @@ function 𝐱(p::Primitives, i::Int64, j::Int64, W::Matrix{Float64}, δ::Float64
         Wᵢ₊₁ = max(W[i + 1, j], Wᵢ)
 
         # Return value
-        return max(0.0, (-1.0 + sqrt(α * β * (1 - δ) * (Wᵢ₊₁ - Wᵢ))) / α)
+        return max(0.0, (-1.0 + sqrt(α * β * (Wᵢ₊₁ - Wᵢ))) / α)
     elseif i == n
         # Update values
         Wᵢ₋₁ = min(W[i - 1, j], Wᵢ)
 
         # Return value
-        return max(0.0, (-1.0 + sqrt(β * δ * α * (Wᵢ - Wᵢ₋₁))) / α)
+        return max(0.0, (-1.0 + sqrt(β * α * δ * (Wᵢ - Wᵢ₋₁))) / α)
     end
 
     # Return error
@@ -168,12 +168,10 @@ function SolveModel(p::Primitives, V::Matrix{Float64}, δ::Float64; tol::Float64
         Vp = Π₀ - Xp
 
         # Iterate over states
-        for Δ in -1:1:1
-            for i in 1:n
-                if (i + Δ >= 1) && (i + Δ <= n)
-                    # Increment value
-                    Vp[i,:] += β * [W[i + Δ, j] * 𝐏(p, i, Δ, Xp[i, j], δ) for j in 1:n]
-                end
+        for i in 1:n
+            for Δ in collect(ifelse(i > 1, -1, 0):1:ifelse(i < n, 1, 0))
+                # Increment value
+                Vp[i,:] += β * [W[i + Δ, j] * 𝐏(p, i, Δ, Xp[i, j], δ) for j in 1:n]
             end
         end
 
@@ -199,4 +197,54 @@ function SolveModel(p::Primitives, V::Matrix{Float64}, δ::Float64; tol::Float64
 
     # Return values
     return X, V
+end
+
+########################################################
+################## MARKET SIMULATIONS ##################
+########################################################
+
+# Simulate markets
+function Simulate(p::Primitives, X::Array{Float64}; T::Int64=25, S::Int64=10000)
+    # Set seed for reproducibility
+    Random.seed!(0)
+
+    # Unpack primitives
+    @unpack n = p
+
+    # Transition probabilities
+    D = zeros((n, n))
+    P = zeros((n, n))
+
+    # Iterate over states
+    for i in 1:n, j in 1:n
+        # Find transition
+        Δ = Int64(j - i)
+        P[i, j] = 𝐏(p, i, Δ, X[i, i], δ)
+    end
+
+    # Cumulative distribution
+    P = cumsum(P, dims=2)
+
+    # Iterate over simulations
+    for s in 1:S
+        # Initial state
+        ω₁, ω₂ = 1, 1
+
+        # Iterate over time periods
+        for t in 1:T
+            # Find relevant transitions and draws
+            P₁, P₂ = P[ω₁,:], P[ω₂,:]
+            ε₁, ε₂ = rand(), rand()
+
+            # Update states
+            ω₁ = findall(P₁ .>= ε₁)[1]
+            ω₂ = findall(P₂ .>= ε₂)[1]
+        end
+
+        # Update distribution
+        D[ω₁, ω₂] += 1.0 / S
+    end
+
+    # Return value
+    return D
 end

@@ -53,20 +53,73 @@ layout = Layout(
 Xᵒ, Vᵒ = SolveModel(p, V, δ; verbose=true)
 plot(surface(z=Xᵒ, x=q̄, y=q̄), layout)
 
+# Set layout
+layout = Layout(
+    ;scene=attr(
+        ;xaxis=attr(;title="q̄ᵢ"), 
+        yaxis=attr(;title="q̄ⱼ"),
+        zaxis=attr(;title="μ(q̄ᵢ, q̄ⱼ)"),
+        main=attr()
+    )
+)
+
+# Simulate distribution
+S = Simulate(p, Xᵒ)
+plot(surface(z=S, x=q̄, y=q̄), layout)
+
 # Solve firms' problems
 δ = 0.01
 Xᵒ, Vᵒ = SolveModel(p, V, δ; verbose=true)
 plot(surface(z=Xᵒ, x=q̄, y=q̄), layout)
+
+# Set layout
+layout = Layout(
+    ;scene=attr(
+        ;xaxis=attr(;title="q̄ᵢ"), 
+        yaxis=attr(;title="q̄ⱼ"),
+        zaxis=attr(;title="μ(q̄ᵢ, q̄ⱼ)"),
+        main=attr()
+    )
+)
+
+# Simulate distribution
+S = Simulate(p, Xᵒ)
+plot(surface(z=S, x=q̄, y=q̄), layout)
 
 # Solve firms' problems
 δ = 0.1
 Xᵒ, Vᵒ = SolveModel(p, V, δ; verbose=true)
 plot(surface(z=Xᵒ, x=q̄, y=q̄), layout)
 
+# Set layout
+layout = Layout(
+    ;scene=attr(
+        ;xaxis=attr(;title="q̄ᵢ"), 
+        yaxis=attr(;title="q̄ⱼ"),
+        zaxis=attr(;title="μ(q̄ᵢ, q̄ⱼ)"),
+        main=attr()
+    )
+)
+
+# Simulate distribution
+S = Simulate(p, Xᵒ)
+plot(surface(z=S, x=q̄, y=q̄), layout)
+
 # Solve firms' problems
 δ = 0.3
 Xᵒ, Vᵒ = SolveModel(p, V, δ; verbose=true)
 plot(surface(z=Xᵒ, x=q̄, y=q̄), layout)
 
-# Transition probabilities
-P = [𝐏(p, i, Int64(i - j), Xᵒ[])]
+# Set layout
+layout = Layout(
+    ;scene=attr(
+        ;xaxis=attr(;title="q̄ᵢ"), 
+        yaxis=attr(;title="q̄ⱼ"),
+        zaxis=attr(;title="μ(q̄ᵢ, q̄ⱼ)"),
+        main=attr()
+    )
+)
+
+# Simulate distribution
+S = Simulate(p, Xᵒ)
+plot(surface(z=S, x=q̄, y=q̄), layout)
