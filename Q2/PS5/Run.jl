@@ -14,112 +14,42 @@ p = Primitives()
 V = [Πᶜ(p, Q̄[i, j][1], Q̄[i, j][2]) for i in 1:n, j in 1:n]
 Q = [qᶜ(p, Q̄[i, j][1], Q̄[i, j][2]) for i in 1:n, j in 1:n]
 
-# Set layout
-layout = Layout(
-    ;scene=attr(
-        ;xaxis=attr(;title="q̄ᵢ"), 
-        yaxis=attr(;title="q̄ⱼ"),
-        zaxis=attr(;title="Π(qᵢ, qⱼ)")
-    )
-)
-
-# Surface plot for static problem profit
-plot(surface(z=V, x=q̄, y=q̄), layout)
-
-# Set layout
-layout = Layout(
-    ;scene=attr(
-        ;xaxis=attr(;title="q̄ᵢ"), 
-        yaxis=attr(;title="q̄ⱼ"),
-        zaxis=attr(;title="q(qⱼ)")
-    )
-)
-
-# Surface plot for static problem quantity
-plot(surface(z=Q, x=q̄, y=q̄), layout)
-
-# Set layout
-layout = Layout(
-    ;scene=attr(
-        ;xaxis=attr(;title="q̄ᵢ"), 
-        yaxis=attr(;title="q̄ⱼ"),
-        zaxis=attr(;title="x(q̄ᵢ, q̄ⱼ)"),
-        main=attr()
-    )
-)
+# Generate plot
+GeneratePlot(q̄, q̄, V, "Π(qᵢ, qⱼ)")
+GeneratePlot(q̄, q̄, Q, "q(qⱼ)")
 
 # Solve firms' problems
 δ = 0.0
 Xᵒ, Vᵒ = SolveModel(p, V, δ; verbose=true)
-plot(surface(z=Xᵒ, x=q̄, y=q̄), layout)
-
-# Set layout
-layout = Layout(
-    ;scene=attr(
-        ;xaxis=attr(;title="q̄ᵢ"), 
-        yaxis=attr(;title="q̄ⱼ"),
-        zaxis=attr(;title="μ(q̄ᵢ, q̄ⱼ)"),
-        main=attr()
-    )
-)
+GeneratePlot(q̄, q̄, Xᵒ, "x(q̄ᵢ, q̄ⱼ)")
 
 # Simulate distribution
 S = Simulate(p, Xᵒ)
-plot(surface(z=S, x=q̄, y=q̄), layout)
+GeneratePlot(q̄, q̄, S, "μ(q̄ᵢ, q̄ⱼ)")
 
 # Solve firms' problems
 δ = 0.01
 Xᵒ, Vᵒ = SolveModel(p, V, δ; verbose=true)
-plot(surface(z=Xᵒ, x=q̄, y=q̄), layout)
-
-# Set layout
-layout = Layout(
-    ;scene=attr(
-        ;xaxis=attr(;title="q̄ᵢ"), 
-        yaxis=attr(;title="q̄ⱼ"),
-        zaxis=attr(;title="μ(q̄ᵢ, q̄ⱼ)"),
-        main=attr()
-    )
-)
+GeneratePlot(q̄, q̄, Xᵒ, "x(q̄ᵢ, q̄ⱼ)")
 
 # Simulate distribution
 S = Simulate(p, Xᵒ)
-plot(surface(z=S, x=q̄, y=q̄), layout)
+GeneratePlot(q̄, q̄, S, "μ(q̄ᵢ, q̄ⱼ)")
 
 # Solve firms' problems
 δ = 0.1
 Xᵒ, Vᵒ = SolveModel(p, V, δ; verbose=true)
-plot(surface(z=Xᵒ, x=q̄, y=q̄), layout)
-
-# Set layout
-layout = Layout(
-    ;scene=attr(
-        ;xaxis=attr(;title="q̄ᵢ"), 
-        yaxis=attr(;title="q̄ⱼ"),
-        zaxis=attr(;title="μ(q̄ᵢ, q̄ⱼ)"),
-        main=attr()
-    )
-)
+GeneratePlot(q̄, q̄, Xᵒ, "x(q̄ᵢ, q̄ⱼ)")
 
 # Simulate distribution
 S = Simulate(p, Xᵒ)
-plot(surface(z=S, x=q̄, y=q̄), layout)
+GeneratePlot(q̄, q̄, S, "μ(q̄ᵢ, q̄ⱼ)")
 
 # Solve firms' problems
 δ = 0.3
 Xᵒ, Vᵒ = SolveModel(p, V, δ; verbose=true)
-plot(surface(z=Xᵒ, x=q̄, y=q̄), layout)
-
-# Set layout
-layout = Layout(
-    ;scene=attr(
-        ;xaxis=attr(;title="q̄ᵢ"), 
-        yaxis=attr(;title="q̄ⱼ"),
-        zaxis=attr(;title="μ(q̄ᵢ, q̄ⱼ)"),
-        main=attr()
-    )
-)
+GeneratePlot(q̄, q̄, Xᵒ, "x(q̄ᵢ, q̄ⱼ)")
 
 # Simulate distribution
 S = Simulate(p, Xᵒ)
-plot(surface(z=S, x=q̄, y=q̄), layout)
+GeneratePlot(q̄, q̄, S, "μ(q̄ᵢ, q̄ⱼ)")

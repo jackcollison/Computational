@@ -7,7 +7,7 @@
 ##################################################
 
 # Import required packages
-using Parameters, Tables, LinearAlgebra, CSV, Printf, DataFrames, Statistics, Random
+using Parameters, LinearAlgebra, Printf, Statistics, Random
 
 # Create primitives
 @with_kw struct Primitives
@@ -82,6 +82,21 @@ function 𝐏(p::Primitives, i::Int64, Δq::Int64, x::Float64, δ::Float64)
 
     # Return value
     return 0.0
+end
+
+# Plotting functionality
+function GeneratePlot(x::Array{Float64}, y::Array{Float64}, z::Matrix{Float64}, zlabel::String; xlabel::String="q̄ᵢ", ylabel::String="q̄ⱼ")
+    # Set layout
+    layout = Layout(
+        ;scene=attr(
+            ;xaxis=attr(;title=xlabel), 
+            yaxis=attr(;title=ylabel),
+            zaxis=attr(;title=zlabel)
+        )
+    )
+
+    # Surface plot
+    plot(surface(z=z, x=x, y=y), layout)
 end
 
 ########################################################
@@ -237,8 +252,7 @@ function Simulate(p::Primitives, X::Array{Float64}; T::Int64=25, S::Int64=10000)
             ε₁, ε₂ = rand(), rand()
 
             # Update states
-            ω₁ = findall(P₁ .>= ε₁)[1]
-            ω₂ = findall(P₂ .>= ε₂)[1]
+            ω₁, ω₂ = findall(P₁ .>= ε₁)[1], findall(P₂ .>= ε₂)[1]
         end
 
         # Update distribution
