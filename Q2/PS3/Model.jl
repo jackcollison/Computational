@@ -56,7 +56,7 @@ function contraction_mapping_market(data::DataFrame, market::Float64, markets::V
         end
 
         # Compute error and save
-        error = norm(δ - δ₀)
+        error = maximum(abs.((δ - δ₀)))
         push!(errors, error)
 
         # Print statement
